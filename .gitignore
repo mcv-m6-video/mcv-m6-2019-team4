@@ -1,0 +1,11 @@
+# Pre-compiled files
+__pycache__
+
+# Logs
+*.log
+
+# Virtual environment
+.env
+.venv/
+Pipfile
+
