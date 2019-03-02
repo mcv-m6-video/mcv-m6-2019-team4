@@ -29,37 +29,33 @@ def testIoU():
     boxA = [0., 0., 10., 10.]
     boxB = [1., 1., 11., 11.]
 
-    correct = bb_intersection_over_union(boxA, boxB)
-    print('Correct solution - also analytical: {0}\n'
-          'Solution by published function: {1}\n'
-          'Solution by correction (ptyshevs): {2}'.format(correct, '0.704225352113', '0.680672268908'))
+    result = bb_intersection_over_union(boxA, boxB)
+    print('Result: {0}\n'
+          'Correct Solution: {1}'.format(result, '0.680672268908'))
 
     print('Normalizing coordinates in a 100x100 coordinate system')
     boxA = [a / 100. for a in boxA]
     boxB = [b / 100. for b in boxB]
 
-    correct = bb_intersection_over_union(boxA, boxB)
+    result = bb_intersection_over_union(boxA, boxB)
 
-    print('Correct solution - also analytical: {0}\n'
-          'Solution by published function: {1}\n'
-          'Solution by correction: {2}'.format(correct, '0.964445166004', '0.680672268908'))
+    print('Result:  {0}\n'
+          'Correct Solution: {1}'.format(result,  '0.680672268908'))
 
     print('Two boxes with no overlap')
     boxA = [0., 0., 10., 10.]
     boxB = [12., 12., 22., 22.]
-    correct = bb_intersection_over_union(boxA, boxB)
+    result = bb_intersection_over_union(boxA, boxB)
 
-    print('Correct solution - also analytical: {0}\n'
-          'Solution by published function: {1}\n'
-          'Solution by correction (ptyshevs): {2}'.format(correct, '0.0', '0.0204081632653'))
+    print('Result:  {0}\n'
+          'Correct Solution: {1}'.format(result, '0.0'))
 
-    print('Example in the comments from ptyshevs')
+    print('Additional example')
     boxA = [0., 0., 2., 2.]
     boxB = [1., 1., 3., 3.]
-    correct = bb_intersection_over_union(boxA, boxB)
+    result = bb_intersection_over_union(boxA, boxB)
 
-    print('Correct solution - also analytical: {0}\n'
-          'Solution by published function: {1}\n'
-          'Solution by correction (ptyshevs): {2}'.format(correct, '0.285714285714', '0.142857142857'))
+    print('Result:  {0}\n'
+          'Correct Solution: {1}'.format(result, '0.142857142857'))
 
 
