@@ -7,5 +7,7 @@ __pycache__
 # Virtual environment
 .env
 .venv/
-Pipfile
+
+# PyCharm stuff
+.idea
 
