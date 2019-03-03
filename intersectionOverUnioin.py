@@ -14,19 +14,17 @@ if __name__ == '__main__':
     # Read GT from dataset
     print(os.getcwd())
     #gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/Anotation_40secs_AICITY_S03_C010.xml')
-    gtExtractor = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/gt/gt.txt')
+    gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/AICITY_team4.xml')
+    #gtExtractor = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/gt/gt.txt')
 
     #innitialize random detector
     randomNoiseScale = 5
     additionDeletionProbability = 0.01
-    randomDetector = randomDetector(5,0.01)
+    randomDetector = randomDetector(randomNoiseScale,additionDeletionProbability)
 
     for i in range(gtExtractor.getGTNFrames()):
 
-        # load the image
-        frame_path = 'image-{:07d}.png'.format(i+1)
-        frame_path = os.getcwd()+'/datasets/AICity_data/train/S03/c010/frames/'+frame_path
-        image = cv2.imread(frame_path)
+
 
         #Get GT BBOX
 
@@ -43,7 +41,11 @@ if __name__ == '__main__':
 
         for x in range(len(gt)):
             for y in range(len(detections)):
+                # load the image
+                frame_path = 'image-{:07d}.png'.format(i + 1)
+                frame_path = os.getcwd() + '/datasets/AICity_data/train/S03/c010/frames/' + frame_path
                 image = cv2.imread(frame_path)
+
                 detection = detections[y]
                 gtBBOX = gt[x]
                 # draw the ground-truth bounding box along with the predicted
