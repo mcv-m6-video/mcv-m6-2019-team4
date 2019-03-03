@@ -3,6 +3,7 @@ import random
 
 class randomDetector():
 
+
     def __init__(self, randomScale, probability):
 
         self.randomScale = randomScale
@@ -10,6 +11,11 @@ class randomDetector():
 
 
     def randomizeDetections (self, initializer):
+        """ Randomize a list of bpunding box as detections
+        Args:
+            initializer: initial list of boundin boxes to randomize
+
+        """
         detections = []
         for element in initializer:
 

@@ -1,4 +1,12 @@
 def bb_intersection_over_union(boxA, boxB):
+    """ Compute the intersection over union of 2 bounding boxes
+    Args:
+        boxA: coordinates of top left corner and bottom right corner of first BBOX
+        boxA: coordinates of top left corner and bottom right corner of second BBOX
+
+    """
+
+
     # determine the (x, y)-coordinates of the intersection rectangle
     xA = max(boxA[0], boxB[0])
     yA = max(boxA[1], boxB[1])

@@ -1,6 +1,7 @@
 from evaluation import IoU
 from utils.annotationsParser import annotationsParser
 from utils.randomDetector import randomDetector
+from utils.detectionExtractorGT import detectionExtractorGT
 import os
 import cv2
 
@@ -12,7 +13,8 @@ if __name__ == '__main__':
 
     # Read GT from dataset
     print(os.getcwd())
-    gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/Anotation_40secs_AICITY_S03_C010.xml')
+    #gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/Anotation_40secs_AICITY_S03_C010.xml')
+    gtExtractor = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/gt/gt.txt')
 
     #innitialize random detector
     randomNoiseScale = 5
@@ -38,9 +40,6 @@ if __name__ == '__main__':
 
         #Get detection BBOX
         detections = randomDetector.randomizeDetections(gt[:])
-
-
-
 
         for x in range(len(gt)):
             for y in range(len(detections)):

@@ -4,6 +4,7 @@ class detectionExtractorGT():
     def __init__(self, filePath):
         self.file = filePath
         self.gt = []
+        self.nFrames = 0
         self.extractGT()
 
     def extractGT(self):
@@ -13,6 +14,9 @@ class detectionExtractorGT():
                 data = [float(elt.strip()) for elt in line.split(',')]
                 self.gt.append(data)
 
+        for gtElement in self.gt:
+            if int(gtElement[0]) > self.nFrames:
+                self.nFrames = int(gtElement[0])
         return
 
     def setFile (self, filePath):
@@ -21,8 +25,11 @@ class detectionExtractorGT():
 
     def getGTFrame (self, i):
         gtElement = self.gt[i]
-        return gtElement[0]
+        return int(gtElement[0])
 
+
+    def getGTNFrames (self):
+        return self.nFrames
 
     def getGTID (self,i ):
         gtElement = self.gt[i]
