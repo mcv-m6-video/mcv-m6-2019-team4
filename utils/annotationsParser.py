@@ -38,7 +38,7 @@ class annotationsParser():
                 dataClass= 0
 
             for BBox in BBoxes:
-                # format data: [frame, ID, left, top, width, height, 1, -1, -1, -1]
+                #format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
                 data =[int(BBox['@frame']),
                        int(id),
                        float(BBox['@xtl']),
