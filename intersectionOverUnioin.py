@@ -14,17 +14,20 @@ if __name__ == '__main__':
     # Read GT from dataset
     print(os.getcwd())
     #gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/Anotation_40secs_AICITY_S03_C010.xml')
-    gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/AICITY_team4.xml')
-    #gtExtractor = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/gt/gt.txt')
+    #gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/AICITY_team4.xml')
+    gtExtractor = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/gt/gt.txt')
 
     #innitialize random detector
     randomNoiseScale = 5
     additionDeletionProbability = 0.01
     randomDetector = randomDetector(randomNoiseScale,additionDeletionProbability)
 
+    TP = 0
+    FN = 0
+    FP = 0
+    threshold = 0.5
+
     for i in range(gtExtractor.getGTNFrames()):
-
-
 
         #Get GT BBOX
 
@@ -38,30 +41,53 @@ if __name__ == '__main__':
 
         #Get detection BBOX
         detections = randomDetector.randomizeDetections(gt[:])
+        BBoxesDetected = []
 
         for x in range(len(gt)):
+            gtBBOX = gt[x]
+            detection = []
+            maxIoU = 0
+            BBoxDetected = -1
+
             for y in range(len(detections)):
-                # load the image
-                frame_path = 'image-{:07d}.png'.format(i + 1)
-                frame_path = os.getcwd() + '/datasets/AICity_data/train/S03/c010/frames/' + frame_path
-                image = cv2.imread(frame_path)
 
-                detection = detections[y]
-                gtBBOX = gt[x]
-                # draw the ground-truth bounding box along with the predicted
-                # bounding box
-                cv2.rectangle(image, (int(detection[0]), int(detection[1])),
-                              (int(detection[2]), int(detection[3])), (0, 0, 255), 2)
-                cv2.rectangle(image, (int(gtBBOX[0]), int(gtBBOX[1])),
-                              (int(gtBBOX[2]), int(gtBBOX[3])), (0, 255, 0), 2)
+                iou = IoU.bb_intersection_over_union(gtBBOX, detections[y])
+                if iou >= maxIoU:
+                    maxIoU = iou
+                    detection = detections[y]
+                    BBoxDetected = y
+
+            if maxIoU > threshold:
+                TP = TP + 1
+                BBoxesDetected.append(BBoxDetected)
+            else:
+                FN = FN + 1
 
 
-                # compute the intersection over union and display it
-                iou = IoU.bb_intersection_over_union(gtBBOX, detection)
-                cv2.putText(image, "IoU: {:.4f}".format(iou), (10, 30),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                print("{}: {:.4f}".format(frame_path, iou))
+            # load the image
+            frame_path = 'image-{:07d}.png'.format(i + 1)
+            frame_path = os.getcwd() + '/datasets/AICity_data/train/S03/c010/frames/' + frame_path
+            image = cv2.imread(frame_path)
 
-                # show the output image
-                cv2.imshow("Image", image)
-                cv2.waitKey(0)
+
+            # draw the ground-truth bounding box along with the predicted
+            # bounding box
+            cv2.rectangle(image, (int(detection[0]), int(detection[1])),
+                          (int(detection[2]), int(detection[3])), (0, 0, 255), 2)
+            cv2.rectangle(image, (int(gtBBOX[0]), int(gtBBOX[1])),
+                          (int(gtBBOX[2]), int(gtBBOX[3])), (0, 255, 0), 2)
+
+
+            # compute the intersection over union and display it
+
+            cv2.putText(image, "IoU: {:.4f}".format(maxIoU), (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            print("{}: {:.4f}".format(frame_path, maxIoU))
+
+            # show the output image
+            cv2.imshow("Image", image)
+            cv2.waitKey(0)
+
+        for y in range(len(detections)):
+            if not BBoxesDetected.__contains__(y):
+                FP = FP + 1
