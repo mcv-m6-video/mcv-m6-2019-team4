@@ -21,9 +21,23 @@ class ROIRefinement():
         """
         RefinedBBOX = []
         for BBOX in BBOXList:
-            if not self.discardBBOX(BBOX):
+            if not self.discardBBOXCenter(BBOX):
                 RefinedBBOX.append(BBOX)
         return RefinedBBOX
+
+    def discardBBOXCenter(self, BBOX):
+        """ Check if a BBOX is inside a ROI
+        Args:
+            BBOX: BBOX to be analyzed
+
+        """
+        centerX = int((BBOX[0] + BBOX[2]) / 2)
+        centerY = int((BBOX[1] + BBOX[3]) / 2)
+
+        if self.ROI[centerY, centerX, 0] == 0:
+            return True
+        return False
+
 
 
     def discardBBOX(self, BBOX):
