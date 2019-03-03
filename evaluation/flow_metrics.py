@@ -27,7 +27,7 @@ All rights go to LI RUOTENG.
 import numpy as np
 import png
 import cv2
-from ../utils/flow_utils import read_flow, read_flo_file, read_png_file
+from .utils.flow_metrics import read_flow, read_flo_file, read_png_file
 
 # Define maximum/minimum flow values to avoid NaN/Inf
 UNKNOWN_FLOW_THRESH = 1e7
@@ -38,7 +38,7 @@ TAU_MOTION = 3  # error smaller or equal than 3 pixels are not taken into accoun
 	Evaluation metrics for Optical Flow
 """
 
-def flow_error(tu, tv, u, v, method='EPE', mask, gt_value):
+def flow_error(tu, tv, u, v, mask, gt_value, method='EPE'):
 	"""
 	Modified on March 2019 to add MSE(Mean Squared Error) in Non-occluded areas (MSEN) and
 	PEPN (Percentage of Erroneous Pixels in Non-occluded areas)
@@ -52,9 +52,9 @@ def flow_error(tu, tv, u, v, method='EPE', mask, gt_value):
 	:param tv: 			ground-truth vertical flow map
 	:param u:  			estimated horizontal flow map
 	:param v:  			estimated vertical flow map
-	:param method: 		error metric selected (def.:'EPE')
 	:param mask:		combination of validity and occlusion mask (target validity value=1(i.e.: valid); target occlusion mask value is 0 for MSEN and PEPN, 0 or 1 for EPE if we ONLY want to compute occluded or non-occluded values)
 	:param gt_value:	value to reject pixels given 'mask' (0 or 1)
+	:param method: 		error metric selected (def.:'EPE')
 	NOTE: to compute EPE for all pixels, just input validity mask w/o occlusions
 	:return:			error measure computed 
 	
@@ -156,19 +156,16 @@ def test_of_metrics():
 	# Path to data
 	frame_1 = 'data/seq157/000157_10.png'
 	frame_2 = 'data/seq157/000157_11.png'
-	flow_noc_path = 'data/seq157/gt/noc/0000157_10.png'  # only non-occluded pixels
-	flow_val_path = 'data/seq157/gt/occ/0000157_10.png'  # ALL valid (non-occ+occluded) pixels
-	# Estimate the optical flow w. Lucas-Kanade algorithm (in opencv)
-	# Default parameters
-	lk_params = dict(winSize  = (15, 15), maxLevel = 2, criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
-	points = np.array([])
+	flow_noc_path = 'data/seq157/gt/noc/000157_10.png'  # only non-occluded pixels
+	flow_val_path = 'data/seq157/gt/occ/000157_10.png'  # ALL valid (non-occ+occluded) pixels
 
 	# Ensure images are grayscale
 	f1_gray = cv2.cvtColor(cv2.imread(frame_1), cv2.COLOR_BGR2GRAY)
 	f2_gray = cv2.cvtColor(cv2.imread(frame_2), cv2.COLOR_BGR2GRAY)
 
-	# Estimate the optical flow via Lucas-Kanade
-	
+	# Load the optical flow estimated via Lucas-Kanade
+	flow_est_path = 'data/seq157/LKflow_000157_10.png'
+	flow_est = readFlow(flow_est_path)
 
 
 	# Read flows in KITTI format
@@ -184,22 +181,22 @@ def test_of_metrics():
 	
 	# Compute error metrics
 	# EPEall
-	EPE_all = flow_error(gt_u_val, gt_v_val, u, v, method='EPE', val_mask, 0)  # don't count mask == 0
+	EPE_all = flow_error(gt_u_val, gt_v_val, u, v, val_mask, 0, method='EPE')  # don't count mask == 0
 
 	# EPEmat
-	EPE_mat = flow_error(gt_u_noc, gt_v_noc, u, v, method='EPE', noc_mask, 0)
+	EPE_mat = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, 0, method='EPE')
 
 	# EPEumat
 	# A "little" bit trickier. The occluded pixels have value 0 in noc_mask and 1 in occ_mask
 	# Use logical operators with masks
 	occ_mask = ~noc_mask & val_mask  # i.e.: occluded = not in non_occluded but are valid
-	EPE_umat = flow_error(gt_u_val, gt_v_val, u, v, method='EPE', occ_mask, 0)	
+	EPE_umat = flow_error(gt_u_val, gt_v_val, u, v, occ_mask, 0, method='EPE')	
 
 	# MSEN
-	MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, method='MSEN', noc_mask, 0)
+	MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, 0, method='MSEN')
 
 	# PEPN
-	MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, method='PEPN', noc_mask, 0)
+	MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, 0, method='PEPN')
 
 	# Print metrics
 	print("Computed metrics:")
