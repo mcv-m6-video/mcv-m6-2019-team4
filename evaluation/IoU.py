@@ -5,7 +5,7 @@ def bb_intersection_over_union(boxA, boxB):
         boxA: coordinates of top left corner and bottom right corner of second BBOX
 
     """
-
+    assert boxA.shape == boxB.shape == (4,)
 
     # determine the (x, y)-coordinates of the intersection rectangle
     xA = max(boxA[0], boxB[0])
