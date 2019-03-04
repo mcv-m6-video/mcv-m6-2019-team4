@@ -17,20 +17,19 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-
-"""
-Modified on March 2019 in the framework of a MsC project. We only take the parts of the original script 'flowlib.py' concerning optical flow: read/write + visualization in both, KITTI format ('.png') and Middlebury ('.flo'), but not in '.pfm'. 
-For the complete code, please refer to: https://github.com/liruoteng/OpticalFlowToolkit
-All rights go to LI RUOTENG.
-"""
-
 import png
 import numpy as np
 import matplotlib.colors as cl
 import matplotlib.pyplot as plt
-#import sys
-#sys.path.append('..')  # hacky, not best way
-#from evaluation.flow_metrics import flow_error
+from PIL import Image
+from evaluation import flow_metrics
+"""
+Modified on March 2019 in the framework of a MsC project. We only take the parts of the original script 'flowlib.py'
+ concerning optical flow: read/write + visualization in both, KITTI format ('.png') and Middlebury ('.flo'), but not in 
+ '.pfm'. 
+For the complete code, please refer to: https://github.com/liruoteng/OpticalFlowToolkit
+All rights go to LI RUOTENG.
+"""
 
 # Define maximum/minimum flow values to avoid NaN/Inf
 UNKNOWN_FLOW_THRESH = 1e7
@@ -53,6 +52,25 @@ def show_flow(filename):
     flow = read_flow(filename)
     img = flow_to_image(flow)
     plt.imshow(img)
+    plt.show()
+
+
+def show_flow_pair(filename, filename2):
+    """
+    visualize optical flow map using matplotlib
+    :param filename: optical flow file 1
+    :param filename: optical flow file 2
+    :return: None
+    """
+
+    flow = read_flow(filename)
+    img = flow_to_image(flow)
+    flow2 = read_flow(filename2)
+    img2 = flow_to_image(flow2)
+
+    fig, ax = plt.subplots(1, 2, sharex='col', sharey='row')
+    ax[0, 0] = plt.imshow(img)
+    ax[0, 1] = plt.imshow(img2)
     plt.show()
 
 
@@ -164,8 +182,7 @@ def flowfile_to_imagefile(flow_file, image_file):
 
 """
     (brief explanation added on March '19): returns a image with labels from 0 to 8 detailing to
-    which class (depending on the ratio between the vertical and horizontal field and their sign)
-     each pixel belongs to.
+    which class (depending on the flow orientation) a pixel belongs
 """
 
 
@@ -206,7 +223,7 @@ def segment_flow(flow):
     return seg
 
 
-# Useful for a more 'canonical' flow representation
+# Useful for a more 'canonical' flow representation (and easier to interpret)
 def flow_to_image(flow):
     """
     Convert flow into middlebury color code image
@@ -256,7 +273,7 @@ def evaluate_flow_file(gt_file, pred_file):
     gt_flow = read_flow(gt_file)        # ground truth flow
     eva_flow = read_flow(pred_file)     # predicted flow
     # Calculate errors
-    average_pe = flow_error(gt_flow[:, :, 0], gt_flow[:, :, 1], eva_flow[:, :, 0], eva_flow[:, :, 1])
+    average_pe = flow_metrics.flow_error(gt_flow[:, :, 0], gt_flow[:, :, 1], eva_flow[:, :, 0], eva_flow[:, :, 1])
     return average_pe
 
 
@@ -265,7 +282,7 @@ def evaluate_flow(gt_flow, pred_flow):
     gt: ground-truth flow
     pred: estimated flow
     """
-    average_pe = flow_error(gt_flow[:, :, 0], gt_flow[:, :, 1], pred_flow[:, :, 0], pred_flow[:, :, 1])
+    average_pe = flow_metrics.flow_error(gt_flow[:, :, 0], gt_flow[:, :, 1], pred_flow[:, :, 0], pred_flow[:, :, 1])
     return average_pe
 
 
@@ -302,7 +319,7 @@ def compute_color(u, v):
     k1[k1 == ncols+1] = 1
     f = fk - k0
 
-    for i in range(0, np.size(colorwheel,1)):
+    for i in range(0, np.size(colorwheel, 1)):
         tmp = colorwheel[:, i]
         col0 = tmp[k0-1] / 255
         col1 = tmp[k1-1] / 255
