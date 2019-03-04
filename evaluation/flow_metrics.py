@@ -27,7 +27,9 @@ All rights go to LI RUOTENG.
 import numpy as np
 import png
 import cv2
-from .utils.flow_metrics import read_flow, read_flo_file, read_png_file
+import sys
+sys.path.append('..')  # less hacky way unknown :$
+from utils.flow_utils import read_flow, read_png_file, read_flo_file
 
 # Define maximum/minimum flow values to avoid NaN/Inf
 UNKNOWN_FLOW_THRESH = 1e7
@@ -35,171 +37,177 @@ SMALLFLOW = 0.0
 TAU_MOTION = 3  # error smaller or equal than 3 pixels are not taken into account
 
 """
-	Evaluation metrics for Optical Flow
+    Evaluation metrics for Optical Flow
 """
+
+
+def squared_error_noc(tu, tv, u, v, mask):  # assuming mask denotes with 1's non-occluded pixels
+    SEN = []
+    # Differences in horizontal and vertical
+    E_du = tu - u
+    E_dv = tv - v
+    # Add together
+    SE = E_du**2 + E_dv**2
+    # Exclude non-valid and occluded pixels
+    SE[mask == 0] = 0
+
+    SEN = np.append(SEN, SE[mask != 0])  # So we do not count occluded pixels
+    return SEN
+
 
 def flow_error(tu, tv, u, v, mask, gt_value, method='EPE'):
-	"""
-	Modified on March 2019 to add MSE(Mean Squared Error) in Non-occluded areas (MSEN) and
-	PEPN (Percentage of Erroneous Pixels in Non-occluded areas)
-	Also added the possibility of passing in a mask of valid pixels and or occluded ones
-	So the input mask 'mask' may be tha combination of both, as follows:
-	valid_mask: 1s valid, 0s invalid; occ_mask: 1s occluded, 0s non-occluded
-	We want valid_mask=1 but we can choose how we provide the occlusion mask to compute only occluded
-	pixels or only non-occluded ones. See 'test_error' below for more details.
+    """
+    * Modified on March 2019 to add MSEN(Mean Squared Error in Non-occluded areas) and	PEPN (Percentage of Erroneous Pixels in Non-occluded areas)
+    - Added the possibility of inputting a mask of valid pixels that will be used in the computation (this is based off the original Matlab code from Stefan Roth ('flowAngErr_mask.m'), which additionally computed the mean angular error.
+    - See 'eval_sequence(...)' below for more details.
 
-	:param tu: 			ground-truth horizontal flow map
-	:param tv: 			ground-truth vertical flow map
-	:param u:  			estimated horizontal flow map
-	:param v:  			estimated vertical flow map
-	:param mask:		combination of validity and occlusion mask (target validity value=1(i.e.: valid); target occlusion mask value is 0 for MSEN and PEPN, 0 or 1 for EPE if we ONLY want to compute occluded or non-occluded values)
-	:param gt_value:	value to reject pixels given 'mask' (0 or 1)
-	:param method: 		error metric selected (def.:'EPE')
-	NOTE: to compute EPE for all pixels, just input validity mask w/o occlusions
-	:return:			error measure computed 
-	
-	"""
+    :param tu: 			ground-truth horizontal flow map
+    :param tv: 			ground-truth vertical flow map
+    :param u:  			estimated horizontal flow map
+    :param v:  			estimated vertical flow map
+    :param mask:		combination of validity and occlusion mask (target validity value=1(i.e.: valid); target occlusion mask value is 0 for MSEN and PEPN, 0 or 1 for EPE if we ONLY want to compute occluded or non-occluded values)
+    :param gt_value:	value to reject pixels given 'mask' (0 or 1)
+    :param method: 		error metric selected (def.:'EPE')
+    :return:			error measure computed
 
-	# Compute 
+    """
 
-	if method == 'EPE':	  # notice that this is EPEall (for all pixels, occluded + non-occluded)
-		"""
-		Calculate average end point error (a.k.a. Mean End Point Error: MEPE)
-		:return: End point error of the estimated flow
-		"""
-		smallflow = 0.0
-		'''  We assume a border 'bord' equal to 0
-		stu = tu[bord+1:end-bord,bord+1:end-bord]
-		stv = tv[bord+1:end-bord,bord+1:end-bord]
-		su = u[bord+1:end-bord,bord+1:end-bord]
-		sv = v[bord+1:end-bord,bord+1:end-bord]
-		'''
-		stu = tu[:]
-		stv = tv[:]
-		su = u[:]
-		sv = v[:]
+    # Compute
 
-		idxUnknow = (abs(stu) > UNKNOWN_FLOW_THRESH) | (abs(stv) > UNKNOWN_FLOW_THRESH) | mask[:] == gt_value
-		stu[idxUnknow] = 0
-		stv[idxUnknow] = 0
-		su[idxUnknow] = 0
-		sv[idxUnknow] = 0
+    if method == 'EPE':  # notice that this is EPEall (for all pixels, occluded + non-occluded)
+        """
+        Calculate average end point error (a.k.a. Mean End Point Error: MEPE)
+        :return: End point error of the estimated flow
+        """
+        smallflow = 0.0
+        '''  We assume a border 'bord' equal to 0
+        stu = tu[bord+1:end-bord,bord+1:end-bord]
+        stv = tv[bord+1:end-bord,bord+1:end-bord]
+        su = u[bord+1:end-bord,bord+1:end-bord]
+        sv = v[bord+1:end-bord,bord+1:end-bord]
+        '''
+        stu = tu[:]
+        stv = tv[:]
+        su = u[:]
+        sv = v[:]
 
-		ind2 = [(np.absolute(stu) > SMALLFLOW) | (np.absolute(stv) > SMALLFLOW)]
+        idxUnknow = (abs(stu) > UNKNOWN_FLOW_THRESH) | (abs(stv) > UNKNOWN_FLOW_THRESH) | mask[:] == gt_value
+        stu[idxUnknow] = 0
+        stv[idxUnknow] = 0
+        su[idxUnknow] = 0
+        sv[idxUnknow] = 0
 
-		# Only used if we uncomment the """angle...""" to compute 'mean angular error (mang)'		
-		index_su = su[tuple(ind2)]
-		index_sv = sv[tuple(ind2)]
-		an = 1.0 / np.sqrt(index_su ** 2 + index_sv ** 2 + 1)
-		un = index_su * an
-		vn = index_sv * an
+        ind2 = [(np.absolute(stu) > SMALLFLOW) | (np.absolute(stv) > SMALLFLOW)]
 
-		index_stu = stu[tuple(ind2)]
-		index_stv = stv[tuple(ind2)]
-		tn = 1.0 / np.sqrt(index_stu ** 2 + index_stv ** 2 + 1)
-		tun = index_stu * tn
-		tvn = index_stv * tn
+        # Only used if we uncomment the """angle...""" to compute 'mean angular error (mang)'
+        index_su = su[tuple(ind2)]
+        index_sv = sv[tuple(ind2)]
+        an = 1.0 / np.sqrt(index_su ** 2 + index_sv ** 2 + 1)
+        un = index_su * an
+        vn = index_sv * an
 
-		'''
-		angle = un * tun + vn * tvn + (an * tn)
-		index = [angle == 1.0]
-		angle[index] = 0.999
-		ang = np.arccos(angle)
-		mang = np.mean(ang)
-		mang = mang * 180 / np.pi
-		'''
+        index_stu = stu[tuple(ind2)]
+        index_stv = stv[tuple(ind2)]
+        tn = 1.0 / np.sqrt(index_stu ** 2 + index_stv ** 2 + 1)
+        tun = index_stu * tn
+        tvn = index_stv * tn
 
-		epe = np.sqrt((stu - su) ** 2 + (stv - sv) ** 2)
-		epe = epe[tuple(ind2)]
-		mepe = np.mean(epe)
-		return mepe
+        '''
+        angle = un * tun + vn * tvn + (an * tn)
+        index = [angle == 1.0]
+        angle[index] = 0.999
+        ang = np.arccos(angle)
+        mang = np.mean(ang)
+        mang = mang * 180 / np.pi
+        '''
 
-	elif method == 'MSEN':
-		# Differences in horizontal and vertical
-		E_du = tu - u
-		E_dv = tv - v
-		# Add together
-		SE = E_du**2 + E_dv**2
-		# Compute mean    
-		MSE = np.mean(SE)
+        epe = np.sqrt((stu - su) ** 2 + (stv - sv) ** 2)
+        epe = epe[tuple(ind2)]
+        mepe = np.mean(epe)
+        return mepe
 
-		# Exclude non-valid and occluded pixels
-		MSE[mask==1] = 0  # valid AND non-occluded ==> 1 & 0 = 0 (so we want to avoid 1's)
-		MSEN = MSE
+    elif method == 'MSEN':
+        # Squared-error for non-occluded pixels
+        SEN = squared_error_noc(tu, tv, u, v, mask)
+        # Compute mean
+        MSEN = np.mean(SEN)
 
-		return MSEN
+        return MSEN
 
-	elif method == 'PEPN':
-		# Differences in horizontal and vertical
-		E_du = tu - u
-		E_dv = tv - v
-		# Add together
-		SE = E_du**2 + E_dv**2
+    elif method == 'PEPN':
+        # Squared-error for non-occluded pixels
+        SEN = squared_error_noc(tu, tv, u, v, mask)
+        PEPN = 100.0 * (np.sum(SEN > TAU_MOTION) / len(SEN))
 
-		# Exclude non-valid and occluded pixels
-		MSE[mask==1] = 0
+        return PEPN
 
-		PEPN = len([1 for e in RSE if e > TAU_MOTION]) / np.count_nonzero(mask)
-
-		return PEPN
-
-	else:
-		print("Non-valid error measure. Please, select one of the following: 'EPE', 'MSEN', 'PEPN'")
-		return None
+    else:
+        print("Non-valid error measure. Please, select one of the following: 'EPE', 'MSEN', 'PEPN'")
+        return None
 
 
 """
-	Compute metrics
+    Compute metrics for a given (KITTI-formatted) sequence
 """
 
-def test_of_metrics():
-	# Path to data
-	frame_1 = 'data/seq157/000157_10.png'
-	frame_2 = 'data/seq157/000157_11.png'
-	flow_noc_path = 'data/seq157/gt/noc/000157_10.png'  # only non-occluded pixels
-	flow_val_path = 'data/seq157/gt/occ/000157_10.png'  # ALL valid (non-occ+occluded) pixels
 
-	# Ensure images are grayscale
-	f1_gray = cv2.cvtColor(cv2.imread(frame_1), cv2.COLOR_BGR2GRAY)
-	f2_gray = cv2.cvtColor(cv2.imread(frame_2), cv2.COLOR_BGR2GRAY)
+def eval_sequence(noc_path, est_path, val_path=''):
 
-	# Load the optical flow estimated via Lucas-Kanade
-	flow_est_path = 'data/seq157/LKflow_000157_10.png'
-	flow_est = readFlow(flow_est_path)
+    flow_est = read_flow(est_path)
+    u = flow_est[:, :, 0]
+    v = flow_est[:, :, 1]
+    # flow_est[:,:,2] is a vector of ones by default (ALL 'valid')
+
+    # Load GT flows
+    # Read flows in KITTI format
+    flow_gt_noc = read_flow(noc_path)
+    gt_u_noc = flow_gt_noc[:, :, 0]
+    gt_v_noc = flow_gt_noc[:, :, 1]
+    noc_mask = flow_gt_noc[:, :, 2].astype(np.uint64)
+
+# Compute metrics for non-occluded pixels (EPEmat, MSEN, PEPN)
+    gt_value = 0  # reject 0's in validity masks
+    # EPEmat
+    EPE_mat = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value, method='EPE')
+    # MSEN
+    MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value, method='MSEN')
+    # PEPN
+    PEPN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value, method='PEPN')
+
+    # If the valid mask is provided, compute EPEumat, EPEall
+    if len(val_path) > 0:
+        flow_gt_val = read_flow(val_path)
+        gt_u_val = flow_gt_val[:, :, 0]
+        gt_v_val = flow_gt_val[:, :, 1]
+        val_mask = flow_gt_val[:, :, 2].astype(np.uint64)  # valid pix
+
+        # EPEall
+        EPE_all = flow_error(gt_u_val, gt_v_val, u, v, val_mask, gt_value, method='EPE')  # don't count mask == 0
+        # EPEumat
+        # A "little" bit trickier. The occluded pixels have value 0 in noc_mask and 1 in occ_mask
+        # Use logical operators with masks
+        occ_mask = ~noc_mask & val_mask  # i.e.: occluded = not in non_occluded but are valid
+        EPE_umat = flow_error(gt_u_val, gt_v_val, u, v, occ_mask, gt_value, method='EPE')
+
+    # Print metrics
+    print("Computed metrics:")
+    print("\tEPEmat = {:.4f}\t MSEN = {:.4f}\t PEPN = {:.2f}%".format(EPE_mat, MSEN, PEPN))
+
+    # Add additional metrics
+    if len(val_path) > 0:
+            print("\tEPEall = {:.4f}\t EPEumat = {:.4f}".format(EPE_all, EPE_umat))
 
 
-	# Read flows in KITTI format
-	flow_gt_noc = read_flow(flow_noc_path)
-	gt_u_noc = flow_gt_noc[:, :, 0]	
-	gt_v_noc = flow_gt_noc[:, :, 1]
-	noc_mask = flow_gt_noc[:, :, 2].astype(np.uint64)  # non-occluded pixels have value 1
+if __name__ == '__main__':  # Testing a sequence
+    # Path to data
+    flow_noc_path = 'data/seq157/gt/noc/000157_10.png'  # only non-occluded pixels
+    flow_val_path = 'data/seq157/gt/occ/000157_10.png'  # ALL valid (non-occ+occluded) pixels
+    # Load the optical flow estimated via Lucas-Kanade
+    flow_est_path = 'data/seq157/LKflow_000157_10.png'
 
-	flow_gt_val = read_flow(flow_val_path)
-	gt_u_val = flow_gt_val[:, :, 0]	
-	gt_v_val = flow_gt_val[:, :, 1]
-	val_mask = flow_gt_val[:, :, 2].astype(np.uint64)  # ALL valid pixels (occ+non-occ) have value 1, invalid to 0
-	
-	# Compute error metrics
-	# EPEall
-	EPE_all = flow_error(gt_u_val, gt_v_val, u, v, val_mask, 0, method='EPE')  # don't count mask == 0
+    print("Testing ALL metrics for seq. 157 KITTI 2012...\n")
+    eval_sequence(flow_noc_path, flow_est_path, flow_val_path)
+    print("\n")
+    print("Testing finished successfully")
+    print("\n")
 
-	# EPEmat
-	EPE_mat = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, 0, method='EPE')
-
-	# EPEumat
-	# A "little" bit trickier. The occluded pixels have value 0 in noc_mask and 1 in occ_mask
-	# Use logical operators with masks
-	occ_mask = ~noc_mask & val_mask  # i.e.: occluded = not in non_occluded but are valid
-	EPE_umat = flow_error(gt_u_val, gt_v_val, u, v, occ_mask, 0, method='EPE')	
-
-	# MSEN
-	MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, 0, method='MSEN')
-
-	# PEPN
-	MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, 0, method='PEPN')
-
-	# Print metrics
-	print("Computed metrics:")
-	print("EPEall={}\t EPEmat={}\t EPEumat={}\nMSEN={}\t PEPN={}%".format(EPE_all, EPE_mat, EPE_umat,
-																		MSEN, 100.0*PEPN))
-	

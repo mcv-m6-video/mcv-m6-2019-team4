@@ -28,16 +28,21 @@ import png
 import numpy as np
 import matplotlib.colors as cl
 import matplotlib.pyplot as plt
-from PIL import Image
+#import sys
+#sys.path.append('..')  # hacky, not best way
+#from evaluation.flow_metrics import flow_error
 
 # Define maximum/minimum flow values to avoid NaN/Inf
 UNKNOWN_FLOW_THRESH = 1e7
 SMALLFLOW = 0.0
 LARGEFLOW = 1e8
+TAU_MOTION = 3  # error smaller or equal than 3 pixels are not taken into account
+VERBOSE = 0  # Do not show informational print's
 
 """
     Visualization
 """
+
 
 def show_flow(filename):
     """
@@ -93,9 +98,11 @@ def visualize_flow(flow, mode='Y'):
 
         return None
 
+
 """
     Read/write interfaces (see 'auxiliar_functions' for details)
 """
+
 
 def read_flow(filename):
     """
@@ -136,7 +143,7 @@ def save_flow_image(flow, image_file):
     """
     save flow visualization into image file
     :param flow: optical flow data
-    :param flow_fil
+    :param image_file: image destination
     :return: None
     """
     flow_img = flow_to_image(flow)
@@ -147,8 +154,8 @@ def save_flow_image(flow, image_file):
 def flowfile_to_imagefile(flow_file, image_file):
     """
     convert flowfile into image file
-    :param flow: optical flow data
-    :param flow_fil
+    :param flow_file: optical flow file path
+    :param image_file: image destination
     :return: None
     """
     flow = read_flow(flow_file)
@@ -361,13 +368,13 @@ def make_color_wheel():
     return colorwheel
 
 
-def read_flo_file(filename):
+def read_flo_file(flow_file):
     """
     Read from Middlebury .flo file
     :param flow_file: name of the flow file
     :return: optical flow data in matrix
     """
-    f = open(filename, 'rb')
+    f = open(flow_file, 'rb')
     magic = np.fromfile(f, np.float32, count=1)
     data2d = None
 
@@ -376,7 +383,9 @@ def read_flo_file(filename):
     else:
         w = np.fromfile(f, np.int32, count=1)
         h = np.fromfile(f, np.int32, count=1)
-        print("Reading %d x %d flow file in .flo format" % (h, w))
+        if VERBOSE:
+            print("Reading %d x %d flow file in .flo format" % (h, w))
+        
         data2d = np.fromfile(f, np.float32, count=2 * w * h)
         # reshape data into 3D array (columns, rows, channels)
         data2d = np.resize(data2d, (h[0], w[0], 2))
@@ -394,7 +403,9 @@ def read_png_file(flow_file):
     flow_direct = flow_object.asDirect()
     flow_data = list(flow_direct[2])
     (w, h) = flow_direct[3]['size']
-    print("Reading %d x %d flow file in .png format" % (h, w))
+    if VERBOSE:
+        print("Reading %d x %d flow file in .png format" % (h, w))
+    
     flow = np.zeros((h, w, 3), dtype=np.float64)
     for i in range(len(flow_data)):
         flow[i, :, 0] = flow_data[i][0::3]
@@ -407,5 +418,5 @@ def read_png_file(flow_file):
     flow[invalid_idx, 1] = 0
     return flow
 
-# TODO: add test functions for visualization tools (week1-optional)
+# TODO: add tests for visualization tools used
 
