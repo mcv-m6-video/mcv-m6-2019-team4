@@ -75,7 +75,7 @@ def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
             fig, ax = plt.subplots(3, 1, sharex='col', sharey='row')
             ax[0, 0] = plt.imshow(gt_flow_img)
             ax[1, 0] = plt.imshow(est_flow_img)
-            ax[2, 0] = plt.
+            # ax[2, 0] = plt.
             plt.show()
             # TODO: test the above
 
