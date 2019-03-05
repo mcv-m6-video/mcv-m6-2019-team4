@@ -28,6 +28,9 @@ For the complete code, please refer to: https://github.com/liruoteng/OpticalFlow
 All rights go to LI RUOTENG.
 """
 
+import sys
+sys.path.append('..')  # less hacky way unknown :$
+
 # Define maximum/minimum flow values to avoid NaN/Inf
 UNKNOWN_FLOW_THRESH = 1e7
 SMALLFLOW = 0.0
