@@ -49,7 +49,7 @@ def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
     E[mask == 0] = 0
 
     # Plot histogram
-    if plot >= 1 and method == 'MSEN':
+    if (plot and method == 'MSEN') or (plot >= 1 and method == 'MSEN'):
         print('MSEN')
         plt.hist(E[mask == 1], bins=50, density=True)
         plt.xlabel('Difference (error)')
@@ -57,12 +57,26 @@ def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
         plt.title('Squared difference for non-occluded pixels')
         plt.show()
 
+        # TODO: create visualization for error (just plot E as an img? Or scale it somehow before)
+        # TODO: estimated flow is more sparse than already sparse gt, improve visualization (more saturated colours,etc)
         # Check if we want to plot anything else
-        if plot > 2:
+        if plot > 1:
             print('Preparing 3x1 plot of estimated flow-ground truth-error')
-            gt_flow_img = flow_utils.flow_to_image([tu, tv])
+            # Need to use (h, w, channels) for flowlib.py functions
+            gt_flow = np.array([tu, tv, mask]).transpose(2,1,0)
+            aux_valid = np.ones(mask.shape)
+            est_flow = np.array([u, v, aux_valid]).transpose(2, 1, 0)
+            #E_valid = np.array([E, aux_valid])
+
+            gt_flow_img = flow_utils.flow_to_image(gt_flow)
             est_flow_img = flow_utils.flow_to_image([u, v])
-            error_img = flow_utils.flow_to_image(E)
+            #error_img = flow_utils.flow_to_image(E)
+
+            fig, ax = plt.subplots(3, 1, sharex='col', sharey='row')
+            ax[0, 0] = plt.imshow(gt_flow_img)
+            ax[1, 0] = plt.imshow(est_flow_img)
+            ax[2, 0] = plt.
+            plt.show()
             # TODO: test the above
 
     SEN = np.append(SEN, E[mask != 0])  # only non-occluded pixels
@@ -149,7 +163,7 @@ def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION, plot=
 
     elif method == 'MSEN':
         # Compute squared difference for non-occluded pixels (mask == 1)
-        SEN = squared_difference_noc(tu, tv, u, v, mask, plot=plot)
+        SEN = squared_difference_noc(tu, tv, u, v, mask, plot=plot, method='MSEN')
 
         # Compute mean
         MSEN = np.mean(SEN)
@@ -158,7 +172,7 @@ def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION, plot=
 
     elif method == 'PEPN':
         # Compute squared difference for non-occluded pixels (mask == 1)
-        SEN = squared_difference_noc(tu, tv, u, v, mask, plot=plot)
+        SEN = squared_difference_noc(tu, tv, u, v, mask, plot=plot, method='PEPN')
 
         # Compute percentage of erroneous pixels
         PEPN = (np.sum(SEN > tau) / len(SEN)) * 100
@@ -194,9 +208,9 @@ def eval_sequence(noc_path, est_path, val_path=''):
     # EPEmat
     EPE_mat = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value, method='EPE')
     # MSEN
-    MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value, method='MSEN')
+    MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value, method='MSEN', plot=2)
     # PEPN
-    PEPN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value, method='PEPN', tau=3, plot=True)
+    PEPN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value, method='PEPN', tau=3)
 
     # If the valid mask is provided, compute EPEumat, EPEall
     if len(val_path) > 0:
