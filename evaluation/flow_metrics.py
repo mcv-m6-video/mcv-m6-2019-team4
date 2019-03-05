@@ -25,8 +25,6 @@ All rights go to LI RUOTENG.
 """
 
 import numpy as np
-import png
-import cv2
 import sys
 sys.path.append('..')  # less hacky way unknown :$
 from utils.flow_utils import read_flow, read_png_file, read_flo_file
