@@ -17,17 +17,17 @@ if __name__ == '__main__':
     # Read GT from dataset
     print(os.getcwd())
     #gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/Anotation_40secs_AICITY_S03_C010.xml')
-    #gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/AICITY_team4.xml')
-    gtExtractor = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/gt/gt.txt')
+    gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/AICITY_team4.xml')
+    #gtExtractor = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/gt/gt.txt')
 
     #innitialize random detector
     randomNoiseScale = 5
     additionDeletionProbability = 0.01
     #randomDetector = randomDetector(randomNoiseScale,additionDeletionProbability)
 
-    detector = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/det/det_mask_rcnn.txt')
+    #detector = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/det/det_mask_rcnn.txt')
     #detector = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/det/det_ssd512.txt')
-    #detector = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/det/det_yolo3.txt')
+    detector = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/det/det_yolo3.txt')
 
     TP = 0
     FN = 0
@@ -39,7 +39,8 @@ if __name__ == '__main__':
 
     IoUvsFrames = []
 
-    video = cv2.VideoWriter('video.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 10, (1920, 1080))
+    #video = cv2.VideoWriter('video.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 10, (1920, 1080))
+    video = cv2.VideoWriter('video.avi', cv2.VideoWriter_fourcc('M','P','4','2'), 10, (1920, 1080))
 
     for i in range(gtExtractor.getGTNFrames()):
 

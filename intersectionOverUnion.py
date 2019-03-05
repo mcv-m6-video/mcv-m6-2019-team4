@@ -18,7 +18,7 @@ if __name__ == '__main__':
     gtExtractor = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/gt/gt.txt')
 
     #innitialize random detector
-    randomNoiseScale = 5
+    randomNoiseScale = 100
     additionDeletionProbability = 0.01
     randomDetector = randomDetector(randomNoiseScale,additionDeletionProbability)
 
