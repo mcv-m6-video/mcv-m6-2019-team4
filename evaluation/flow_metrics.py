@@ -65,12 +65,12 @@ def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
             # Need to use (h, w, channels) for flowlib.py functions
             gt_flow = np.array([tu, tv, mask]).transpose(2,1,0)
             aux_valid = np.ones(mask.shape)
-            est_flow = np.array([u, v, aux_valid]).transpose(2, 1, 0)
-            #E_valid = np.array([E, aux_valid])
+            est_flow = np.array([u, v, aux_valid]).transpose(2,1,0)
+            # E_valid = np.array([E, aux_valid])
 
             gt_flow_img = flow_utils.flow_to_image(gt_flow)
-            est_flow_img = flow_utils.flow_to_image([u, v])
-            #error_img = flow_utils.flow_to_image(E)
+            est_flow_img = flow_utils.flow_to_image(est_flow)
+            # error_img = flow_utils.flow_to_image(E)
 
             fig, ax = plt.subplots(3, 1, sharex='col', sharey='row')
             ax[0, 0] = plt.imshow(gt_flow_img)
