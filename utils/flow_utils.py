@@ -17,7 +17,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-import png
+import cv2
 import numpy as np
 import matplotlib.colors as cl
 import matplotlib.pyplot as plt
@@ -29,6 +29,7 @@ Modified on March 2019 in the framework of a MsC project. We only take the parts
  '.pfm'. 
 For the complete code, please refer to: https://github.com/liruoteng/OpticalFlowToolkit
 All rights go to LI RUOTENG.
+
 """
 
 # Define maximum/minimum flow values to avoid NaN/Inf
@@ -121,6 +122,8 @@ def visualize_flow(flow, mode='Y'):
     Read/write interfaces (see 'auxiliar_functions' for details)
 """
 
+# Overwrite 'read_png_file', 'save_'
+
 
 def read_flow(filename):
     """
@@ -131,7 +134,8 @@ def read_flow(filename):
     if filename.endswith('.flo'):
         flow = read_flo_file(filename)
     elif filename.endswith('.png'):
-        flow = read_png_file(filename)
+        #flow = read_png_file(filename)
+        flow = read_kitti_file(filename)
     else:
         raise Exception('Invalid flow file format!')
 
@@ -410,30 +414,60 @@ def read_flo_file(flow_file):
     return data2d
 
 
-def read_png_file(flow_file):
+# def read_png_file(flow_file):
+#     """
+#     Read from KITTI .png file
+#     :param flow_file: name of the flow file
+#     :return: optical flow data in matrix
+#     March 2019: we need the data as w x h x channels
+#     So we transpose each element of flow at the end
+#     """
+#     flow_object = png.Reader(filename=flow_file)
+#     flow_direct = flow_object.asDirect()
+#     flow_data = list(flow_direct[2])
+#     (w, h) = flow_direct[3]['size']
+#     if VERBOSE:
+#         print("Reading %d x %d flow file in .png format" % (h, w))
+#
+#     flow = np.zeros((h, w, 3), dtype=np.float64)
+#     for i in range(len(flow_data)):
+#         flow[i, :, 0] = flow_data[i][0::3]
+#         flow[i, :, 1] = flow_data[i][1::3]
+#         flow[i, :, 2] = flow_data[i][2::3]
+#
+#     invalid_idx = (flow[:, :, 2] == 0)
+#     flow[:, :, 0:2] = (flow[:, :, 0:2] - 2 ** 15) / 64.0
+#     flow[invalid_idx, 0] = 0
+#     flow[invalid_idx, 1] = 0
+#
+#     # Transpose to have (width, height, channels)
+#     flow[:, :, 0] = np.transpose(flow[:, :, 0])
+#     flow[:, :, 1] = np.transpose(flow[:, :, 1])
+#     flow[:, :, 2] = np.transpose(flow[:, :, 2])
+#
+#     return flow
+
+
+def read_kitti_file(flow_file):
     """
     Read from KITTI .png file
     :param flow_file: name of the flow file
-    :return: optical flow data in matrix
-    """
-    flow_object = png.Reader(filename=flow_file)
-    flow_direct = flow_object.asDirect()
-    flow_data = list(flow_direct[2])
-    (w, h) = flow_direct[3]['size']
-    if VERBOSE:
-        print("Reading %d x %d flow file in .png format" % (h, w))
-    
-    flow = np.zeros((h, w, 3), dtype=np.float64)
-    for i in range(len(flow_data)):
-        flow[i, :, 0] = flow_data[i][0::3]
-        flow[i, :, 1] = flow_data[i][1::3]
-        flow[i, :, 2] = flow_data[i][2::3]
+    :return: optical flow data in matrix (hor_field, vert_field, val_mask)
+    adapted from original devkit_kitti MATLAB code
 
-    invalid_idx = (flow[:, :, 2] == 0)
-    flow[:, :, 0:2] = (flow[:, :, 0:2] - 2 ** 15) / 64.0
-    flow[invalid_idx, 0] = 0
-    flow[invalid_idx, 1] = 0
-    return flow
+    """
+    flow_kitti = cv2.imread(flow_file, -1)  # Read as R, G, B (instead of BGR)
+
+    # Convert to floating point
+    u_gt = (flow_kitti[:, :, 2] - 2. ** 15) / 64
+    v_gt = (flow_kitti[:, :, 1] - 2. ** 15) / 64
+    # Read validity mask
+    valid_gt = flow_kitti[:, :, 0]
+    # Transpose array to match reference MATLAB code
+    F_kitti = np.transpose(np.array([u_gt, v_gt, valid_gt]))
+
+    return F_kitti
+
 
 # TODO: add tests for visualization tools used
 
