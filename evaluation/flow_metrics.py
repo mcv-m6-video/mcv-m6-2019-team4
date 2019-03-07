@@ -134,7 +134,7 @@ def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION,
         sv = v[:]
 
         idxUnknow = (abs(stu) > UNKNOWN_FLOW_THRESH) | (
-                abs(stv) > UNKNOWN_FLOW_THRESH) | mask[:] == gt_value
+            abs(stv) > UNKNOWN_FLOW_THRESH) | mask[:] == gt_value
         stu[idxUnknow] = 0
         stv[idxUnknow] = 0
         su[idxUnknow] = 0
