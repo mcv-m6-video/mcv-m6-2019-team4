@@ -21,7 +21,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils import flow_utils
 
-
 """
 Modified on March 2019 in the framework of a MsC project. We only take the parts of the original script 'flowlib.py' concerning optical flow: read/write + visualization in both, KITTI format ('.png') and Middlebury ('.flo'), but not in '.pfm'. 
 For the complete code, please refer to: https://github.com/liruoteng/OpticalFlowToolkit
@@ -29,6 +28,7 @@ All rights go to LI RUOTENG.
 """
 
 import sys
+
 sys.path.append('..')  # less hacky way unknown :$
 
 # Define maximum/minimum flow values to avoid NaN/Inf
@@ -39,6 +39,8 @@ TAU_MOTION = 3  # error smaller or equal than 3 pixels are not taken into accoun
 """
     Evaluation metrics for Optical Flow
 """
+
+from paths import DATA_DIR
 
 
 def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
@@ -66,14 +68,14 @@ def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
         if plot > 1:
             print('Preparing 3x1 plot of estimated flow-ground truth-error')
             # Need to use (h, w, channels) for flowlib.py functions
-            gt_flow = np.array([tu, tv, mask]).transpose(2,1,0)
+            gt_flow = np.array([tu, tv, mask]).transpose(2, 1, 0)
             aux_valid = np.ones(mask.shape)
-            est_flow = np.array([u, v, aux_valid]).transpose(2,1,0)
+            est_flow = np.array([u, v, aux_valid]).transpose(2, 1, 0)
             # E_valid = np.array([E, aux_valid])
 
             gt_flow_img = flow_utils.flow_to_image(gt_flow)
             est_flow_img = flow_utils.flow_to_image(est_flow)
-            error_img = E.transpose(1,0)
+            error_img = E.transpose(1, 0)
 
             # fig, ax = plt.subplots(2, 1, sharex='col', sharey='row')
             # ax[0, 0] = plt.imshow(gt_flow_img)
@@ -86,10 +88,12 @@ def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
 
     return SEN
 
+
 # TODO: MUST do the conversion inside the function and not at the evaluation function (astype(np.uint64))
 
 
-def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION, plot=0):
+def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION,
+               plot=0):
     """
     * Modified on March 2019 to add MSEN(Mean Squared Error in Non-occluded areas) and	PEPN (Percentage of Erroneous
     Pixels in Non-occluded areas)
@@ -129,13 +133,15 @@ def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION, plot=
         su = u[:]
         sv = v[:]
 
-        idxUnknow = (abs(stu) > UNKNOWN_FLOW_THRESH) | (abs(stv) > UNKNOWN_FLOW_THRESH) | mask[:] == gt_value
+        idxUnknow = (abs(stu) > UNKNOWN_FLOW_THRESH) | (
+                abs(stv) > UNKNOWN_FLOW_THRESH) | mask[:] == gt_value
         stu[idxUnknow] = 0
         stv[idxUnknow] = 0
         su[idxUnknow] = 0
         sv[idxUnknow] = 0
 
-        ind2 = [(np.absolute(stu) > SMALLFLOW) | (np.absolute(stv) > SMALLFLOW)]
+        ind2 = [
+            (np.absolute(stu) > SMALLFLOW) | (np.absolute(stv) > SMALLFLOW)]
 
         # Only used if we uncomment the """angle...""" to compute 'mean angular error (mang)'
         index_su = su[tuple(ind2)]
@@ -166,7 +172,8 @@ def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION, plot=
 
     elif method == 'MSEN':
         # Compute squared difference for non-occluded pixels (mask == 1)
-        SEN = squared_difference_noc(tu, tv, u, v, mask, plot=plot, method='MSEN')
+        SEN = squared_difference_noc(tu, tv, u, v, mask, plot=plot,
+                                     method='MSEN')
 
         # Compute mean
         MSEN = np.mean(SEN)
@@ -175,7 +182,8 @@ def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION, plot=
 
     elif method == 'PEPN':
         # Compute squared difference for non-occluded pixels (mask == 1)
-        SEN = squared_difference_noc(tu, tv, u, v, mask, plot=plot, method='PEPN')
+        SEN = squared_difference_noc(tu, tv, u, v, mask, plot=plot,
+                                     method='PEPN')
 
         # Compute percentage of erroneous pixels
         PEPN = (np.sum(SEN > tau) / len(SEN)) * 100
@@ -183,7 +191,8 @@ def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION, plot=
         return PEPN
 
     else:
-        print("Non-valid error measure. Please, select one of the following: 'EPE', 'MSEN', 'PEPN'")
+        print(
+            "Non-valid error measure. Please, select one of the following: 'EPE', 'MSEN', 'PEPN'")
         return None
 
 
@@ -193,7 +202,6 @@ def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION, plot=
 
 
 def eval_sequence(noc_path, est_path, val_path=''):
-
     flow_est = flow_utils.read_flow(est_path)
     u = flow_est[:, :, 0]
     v = flow_est[:, :, 1]
@@ -206,14 +214,17 @@ def eval_sequence(noc_path, est_path, val_path=''):
     gt_v_noc = flow_gt_noc[:, :, 1]
     noc_mask = flow_gt_noc[:, :, 2].astype(np.uint64)
 
-# Compute metrics for non-occluded pixels (EPEmat, MSEN, PEPN)
+    # Compute metrics for non-occluded pixels (EPEmat, MSEN, PEPN)
     gt_value = 0  # reject 0's in validity masks
     # EPEmat
-    EPE_mat = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value, method='EPE')
+    EPE_mat = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value,
+                         method='EPE')
     # MSEN
-    MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value, method='MSEN', plot=2)
+    MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value,
+                      method='MSEN', plot=2)
     # PEPN
-    PEPN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value, method='PEPN', tau=3)
+    PEPN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value,
+                      method='PEPN', tau=3)
 
     # If the valid mask is provided, compute EPEumat, EPEall
     if len(val_path) > 0:
@@ -223,28 +234,34 @@ def eval_sequence(noc_path, est_path, val_path=''):
         val_mask = flow_gt_val[:, :, 2].astype(np.uint64)
 
         # EPEall
-        EPE_all = flow_error(gt_u_val, gt_v_val, u, v, val_mask, gt_value, method='EPE')  # don't count mask == 0
+        EPE_all = flow_error(gt_u_val, gt_v_val, u, v, val_mask, gt_value,
+                             method='EPE')  # don't count mask == 0
         # EPEumat
         # A "little" bit trickier. The occluded pixels have value 0 in noc_mask and 1 in occ_mask
         # Use logical operators with masks
         occ_mask = ~noc_mask & val_mask  # i.e.: occluded = not in non_occluded but are valid
-        EPE_umat = flow_error(gt_u_val, gt_v_val, u, v, occ_mask, gt_value, method='EPE')
+        EPE_umat = flow_error(gt_u_val, gt_v_val, u, v, occ_mask, gt_value,
+                              method='EPE')
 
     # Print metrics
     print("Computed metrics:")
-    print("\tEPEmat = {:.4f}\t MSEN = {:.4f}\t PEPN = {:.2f}%".format(EPE_mat, MSEN, PEPN))
+    print("\tEPEmat = {:.4f}\t MSEN = {:.4f}\t PEPN = {:.2f}%".format(EPE_mat,
+                                                                      MSEN,
+                                                                      PEPN))
 
     # Add additional metrics
     if len(val_path) > 0:
-            print("\tEPEall = {:.4f}\t EPEumat = {:.4f}".format(EPE_all, EPE_umat))
+        print("\tEPEall = {:.4f}\t EPEumat = {:.4f}".format(EPE_all, EPE_umat))
 
 
 if __name__ == '__main__':  # Testing a sequence
     # Path to data
-    flow_noc_path = 'data/seq157/gt/noc/000157_10.png'  # only non-occluded pixels
-    flow_val_path = 'data/seq157/gt/occ/000157_10.png'  # ALL valid (non-occ+occluded) pixels
+    flow_noc_path = DATA_DIR.joinpath(
+        'seq157/gt/noc/000157_10.png')  # only non-occluded pixels
+    flow_val_path = DATA_DIR.joinpath(
+        'seq157/gt/occ/000157_10.png')  # ALL valid (non-occ+occluded) pixels
     # Load the optical flow estimated via Lucas-Kanade
-    flow_est_path = 'data/seq157/LKflow_000157_10.png'
+    flow_est_path = DATA_DIR.joinpath('seq157/LKflow_000157_10.png')
 
     print("Testing ALL metrics for seq. 157 KITTI 2012...\n")
     eval_sequence(flow_noc_path, flow_est_path, flow_val_path)
