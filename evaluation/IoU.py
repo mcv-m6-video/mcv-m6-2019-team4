@@ -32,7 +32,6 @@ def bb_intersection_over_union(boxA, boxB):
 
 
 def testIoU():
-
     # Test function for IoU
     boxA = [0., 0., 10., 10.]
     boxB = [1., 1., 11., 11.]
@@ -48,7 +47,7 @@ def testIoU():
     result = bb_intersection_over_union(boxA, boxB)
 
     print('Result:  {0}\n'
-          'Correct Solution: {1}'.format(result,  '0.680672268908'))
+          'Correct Solution: {1}'.format(result, '0.680672268908'))
 
     print('Two boxes with no overlap')
     boxA = [0., 0., 10., 10.]
@@ -65,5 +64,3 @@ def testIoU():
 
     print('Result:  {0}\n'
           'Correct Solution: {1}'.format(result, '0.142857142857'))
-
-
