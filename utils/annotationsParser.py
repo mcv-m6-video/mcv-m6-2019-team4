@@ -1,6 +1,6 @@
-
 import xmltodict
 import random
+
 
 class annotationsParser():
 
@@ -9,7 +9,6 @@ class annotationsParser():
         self.gt = []
         self.nFrames = 0
         self.extractGT()
-
 
     def extractGT(self):
         self.gt = []
@@ -35,47 +34,43 @@ class annotationsParser():
             elif label == 'bicycle':
                 dataClass = 3
             else:
-                dataClass= 0
+                dataClass = 0
 
             for BBox in BBoxes:
-                #format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
-                data =[int(BBox['@frame']),
-                       int(id),
-                       float(BBox['@xtl']),
-                       float(BBox['@ytl']),
-                       float(BBox['@xbr']),
-                       float(BBox['@ybr']),
-                       dataClass]
+                # format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
+                data = [int(BBox['@frame']),
+                        int(id),
+                        float(BBox['@xtl']),
+                        float(BBox['@ytl']),
+                        float(BBox['@xbr']),
+                        float(BBox['@ybr']),
+                        dataClass]
                 self.gt.append(data)
-
 
         for gtElement in self.gt:
             if int(gtElement[0]) > self.nFrames:
                 self.nFrames = int(gtElement[0])
         return
 
-    def setFile (self, filePath):
+    def setFile(self, filePath):
         self.file = filePath
 
-
-    def getGTFrame (self, i):
+    def getGTFrame(self, i):
         gtElement = self.gt[i]
         return int(gtElement[0])
 
-
-    def getGTNFrames (self):
+    def getGTNFrames(self):
         return self.nFrames
 
-    def getGTID (self,i ):
+    def getGTID(self, i):
         gtElement = self.gt[i]
         return gtElement[1]
 
-
-    def getGTBoundingBox (self, i):
-        #BBformat [xA,yA, xB, yB]
+    def getGTBoundingBox(self, i):
+        # BBformat [xA,yA, xB, yB]
         gtElement = self.gt[i]
         BBox = [gtElement[2], gtElement[3], gtElement[4], gtElement[5]]
         return BBox
 
-    def getGTList (self):
+    def getGTList(self):
         return self.gt

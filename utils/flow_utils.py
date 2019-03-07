@@ -23,6 +23,7 @@ import matplotlib.colors as cl
 import matplotlib.pyplot as plt
 from PIL import Image
 from evaluation import flow_metrics
+
 """
 Modified on March 2019 in the framework of a MsC project. We only take the parts of the original script 'flowlib.py'
  concerning optical flow: read/write + visualization in both, KITTI format ('.png') and Middlebury ('.flo'), but not in 
@@ -122,6 +123,7 @@ def visualize_flow(flow, mode='Y'):
     Read/write interfaces (see 'auxiliar_functions' for details)
 """
 
+
 # Overwrite 'read_png_file', 'save_'
 
 
@@ -134,7 +136,7 @@ def read_flow(filename):
     if filename.endswith('.flo'):
         flow = read_flo_file(filename)
     elif filename.endswith('.png'):
-        #flow = read_png_file(filename)
+        # flow = read_png_file(filename)
         flow = read_kitti_file(filename)
     else:
         raise Exception('Invalid flow file format!')
@@ -255,8 +257,8 @@ def flow_to_image(flow):
     rad = np.sqrt(u ** 2 + v ** 2)
     maxrad = max(-1, np.max(rad))
 
-    u = u/(maxrad + np.finfo(float).eps)
-    v = v/(maxrad + np.finfo(float).eps)
+    u = u / (maxrad + np.finfo(float).eps)
+    v = v / (maxrad + np.finfo(float).eps)
 
     img = compute_color(u, v)
 
@@ -274,10 +276,11 @@ def evaluate_flow_file(gt_file, pred_file):
     :return: end point error, float32
     """
     # Read flow files and calculate the errors
-    gt_flow = read_flow(gt_file)        # ground truth flow
-    eva_flow = read_flow(pred_file)     # predicted flow
+    gt_flow = read_flow(gt_file)  # ground truth flow
+    eva_flow = read_flow(pred_file)  # predicted flow
     # Calculate errors
-    average_pe = flow_metrics.flow_error(gt_flow[:, :, 0], gt_flow[:, :, 1], eva_flow[:, :, 0], eva_flow[:, :, 1])
+    average_pe = flow_metrics.flow_error(gt_flow[:, :, 0], gt_flow[:, :, 1],
+                                         eva_flow[:, :, 0], eva_flow[:, :, 1])
     return average_pe
 
 
@@ -286,15 +289,13 @@ def evaluate_flow(gt_flow, pred_flow):
     gt: ground-truth flow
     pred: estimated flow
     """
-    average_pe = flow_metrics.flow_error(gt_flow[:, :, 0], gt_flow[:, :, 1], pred_flow[:, :, 0], pred_flow[:, :, 1])
+    average_pe = flow_metrics.flow_error(gt_flow[:, :, 0], gt_flow[:, :, 1],
+                                         pred_flow[:, :, 0],
+                                         pred_flow[:, :, 1])
     return average_pe
 
 
-"""
-    Auxiliar functions to read/write flow files and visualizations in PNG format
-"""
-
-
+# Auxiliar functions to read/write flow files and visualizations in PNG format
 def compute_color(u, v):
     """
     compute optical flow color map
@@ -311,30 +312,30 @@ def compute_color(u, v):
     colorwheel = make_color_wheel()
     ncols = np.size(colorwheel, 0)
 
-    rad = np.sqrt(u**2+v**2)
+    rad = np.sqrt(u ** 2 + v ** 2)
 
     a = np.arctan2(-v, -u) / np.pi
 
-    fk = (a+1) / 2 * (ncols - 1) + 1
+    fk = (a + 1) / 2 * (ncols - 1) + 1
 
     k0 = np.floor(fk).astype(int)
 
     k1 = k0 + 1
-    k1[k1 == ncols+1] = 1
+    k1[k1 == ncols + 1] = 1
     f = fk - k0
 
     for i in range(0, np.size(colorwheel, 1)):
         tmp = colorwheel[:, i]
-        col0 = tmp[k0-1] / 255
-        col1 = tmp[k1-1] / 255
-        col = (1-f) * col0 + f * col1
+        col0 = tmp[k0 - 1] / 255
+        col1 = tmp[k1 - 1] / 255
+        col = (1 - f) * col0 + f * col1
 
         idx = rad <= 1
-        col[idx] = 1-rad[idx]*(1-col[idx])
+        col[idx] = 1 - rad[idx] * (1 - col[idx])
         notidx = np.logical_not(idx)
 
         col[notidx] *= 0.75
-        img[:, :, i] = np.uint8(np.floor(255 * col*(1-nanIdx)))
+        img[:, :, i] = np.uint8(np.floor(255 * col * (1 - nanIdx)))
 
     return img
 
@@ -359,32 +360,37 @@ def make_color_wheel():
 
     # RY
     colorwheel[0:RY, 0] = 255
-    colorwheel[0:RY, 1] = np.transpose(np.floor(255*np.arange(0, RY) / RY))
+    colorwheel[0:RY, 1] = np.transpose(np.floor(255 * np.arange(0, RY) / RY))
     col += RY
 
     # YG
-    colorwheel[col:col+YG, 0] = 255 - np.transpose(np.floor(255*np.arange(0, YG) / YG))
-    colorwheel[col:col+YG, 1] = 255
+    colorwheel[col:col + YG, 0] = 255 - np.transpose(
+        np.floor(255 * np.arange(0, YG) / YG))
+    colorwheel[col:col + YG, 1] = 255
     col += YG
 
     # GC
-    colorwheel[col:col+GC, 1] = 255
-    colorwheel[col:col+GC, 2] = np.transpose(np.floor(255*np.arange(0, GC) / GC))
+    colorwheel[col:col + GC, 1] = 255
+    colorwheel[col:col + GC, 2] = np.transpose(
+        np.floor(255 * np.arange(0, GC) / GC))
     col += GC
 
     # CB
-    colorwheel[col:col+CB, 1] = 255 - np.transpose(np.floor(255*np.arange(0, CB) / CB))
-    colorwheel[col:col+CB, 2] = 255
+    colorwheel[col:col + CB, 1] = 255 - np.transpose(
+        np.floor(255 * np.arange(0, CB) / CB))
+    colorwheel[col:col + CB, 2] = 255
     col += CB
 
     # BM
-    colorwheel[col:col+BM, 2] = 255
-    colorwheel[col:col+BM, 0] = np.transpose(np.floor(255*np.arange(0, BM) / BM))
+    colorwheel[col:col + BM, 2] = 255
+    colorwheel[col:col + BM, 0] = np.transpose(
+        np.floor(255 * np.arange(0, BM) / BM))
     col += + BM
 
     # MR
-    colorwheel[col:col+MR, 2] = 255 - np.transpose(np.floor(255 * np.arange(0, MR) / MR))
-    colorwheel[col:col+MR, 0] = 255
+    colorwheel[col:col + MR, 2] = 255 - np.transpose(
+        np.floor(255 * np.arange(0, MR) / MR))
+    colorwheel[col:col + MR, 0] = 255
 
     return colorwheel
 
@@ -406,7 +412,7 @@ def read_flo_file(flow_file):
         h = np.fromfile(f, np.int32, count=1)
         if VERBOSE:
             print("Reading %d x %d flow file in .flo format" % (h, w))
-        
+
         data2d = np.fromfile(f, np.float32, count=2 * w * h)
         # reshape data into 3D array (columns, rows, channels)
         data2d = np.resize(data2d, (h[0], w[0], 2))
@@ -485,7 +491,8 @@ def show_images(images, cols=1, titles=None, cmap='gray', scaling=1):
     """
     assert ((titles is None) or (len(images) == len(titles)))
     n_images = len(images)
-    if titles is None: titles = ['Image (%d)' % i for i in range(1, n_images + 1)]
+    if titles is None: titles = ['Image (%d)' % i for i in
+                                 range(1, n_images + 1)]
     fig = plt.figure()
     for n, (image, title) in enumerate(zip(images, titles)):
         a = fig.add_subplot(cols, np.ceil(n_images / float(cols)), n + 1)
@@ -499,4 +506,3 @@ def show_images(images, cols=1, titles=None, cmap='gray', scaling=1):
     plt.show()
 
 # TODO: add tests for visualization tools used
-
