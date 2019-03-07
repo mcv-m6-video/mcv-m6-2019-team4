@@ -1,26 +1,22 @@
 from evaluation import IoU
-from utils.annotationsParser import annotationsParser
 from utils.randomDetector import randomDetector
 from utils.detectionExtractorGT import detectionExtractorGT
 import os
 import cv2
-
-
+from paths import AICITY_DIR
 
 if __name__ == '__main__':
-
     IoU.testIoU()
 
     # Read GT from dataset
     print(os.getcwd())
-    #gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/Anotation_40secs_AICITY_S03_C010.xml')
-    #gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/AICITY_team4.xml')
-    gtExtractor = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/gt/gt.txt')
+    gtExtractor = detectionExtractorGT(AICITY_DIR.joinpath('gt', 'gt.txt'))
 
-    #innitialize random detector
+    # innitialize random detector
     randomNoiseScale = 100
     additionDeletionProbability = 0.01
-    randomDetector = randomDetector(randomNoiseScale,additionDeletionProbability)
+    randomDetector = randomDetector(randomNoiseScale,
+                                    additionDeletionProbability)
 
     TP = 0
     FN = 0
@@ -29,17 +25,14 @@ if __name__ == '__main__':
 
     for i in range(gtExtractor.getGTNFrames()):
 
-        #Get GT BBOX
-
+        # Get GT BBOX
         gt = []
         for j in range(len(gtExtractor.gt)):
             if gtExtractor.getGTFrame(j) == i:
                 gtBBOX = gtExtractor.getGTBoundingBox(j)
                 gt.append(gtBBOX)
 
-
-
-        #Get detection BBOX
+        # Get detection BBOX
         detections = randomDetector.randomizeDetections(gt[:])
         BBoxesDetected = []
 
@@ -50,7 +43,6 @@ if __name__ == '__main__':
             BBoxDetected = -1
 
             for y in range(len(detections)):
-
                 iou = IoU.bb_intersection_over_union(gtBBOX, detections[y])
                 if iou >= maxIoU:
                     maxIoU = iou
@@ -63,20 +55,18 @@ if __name__ == '__main__':
             else:
                 FN = FN + 1
 
-
             # load the image
-            frame_path = 'image-{:07d}.png'.format(i + 1)
-            frame_path = os.getcwd() + '/datasets/AICity_data/train/S03/c010/frames/' + frame_path
+            frame_path = AICITY_DIR.joinpath('frames',
+                                             'image-{:07d}.png'.format(i + 1))
             image = cv2.imread(frame_path)
-
 
             # draw the ground-truth bounding box along with the predicted
             # bounding box
             cv2.rectangle(image, (int(detection[0]), int(detection[1])),
-                          (int(detection[2]), int(detection[3])), (0, 0, 255), 2)
+                          (int(detection[2]), int(detection[3])), (0, 0, 255),
+                          2)
             cv2.rectangle(image, (int(gtBBOX[0]), int(gtBBOX[1])),
                           (int(gtBBOX[2]), int(gtBBOX[3])), (0, 255, 0), 2)
-
 
             # compute the intersection over union and display it
 
