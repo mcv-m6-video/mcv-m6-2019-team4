@@ -4,49 +4,51 @@ import numpy as np
 from paths import AICITY_DIR
 
 
-class ROIRefinement():
+class ROIRefiner(object):
     def __init__(self, filepath, threshold):
 
         self.ROI = cv2.imread(filepath)
         self.threshold = threshold
 
-    def refineBBOX(self, BBOXList):
+    def refine_bbox(self, bboxes):
         """ Refine a list of bounding boxes depending on their relative position to the ROI image
         Args:
-            BBOXList: List of BBOXes
+            bboxes: List of BBOXes
 
         """
-        RefinedBBOX = []
-        for BBOX in BBOXList:
-            if not self.discardBBOXCenter(BBOX):
-                RefinedBBOX.append(BBOX)
-        return RefinedBBOX
+        refined_bbox = []
+        for bbox in bboxes:
+            if not self.discard_bbox_center(bbox):
+                refined_bbox.append(bbox)
+        return refined_bbox
 
-    def discardBBOXCenter(self, BBOX):
+    def discard_bbox_center(self, bbox):
         """ Check if a BBOX is inside a ROI
         Args:
-            BBOX: BBOX to be analyzed
+            bbox: BBOX to be analyzed
 
         """
-        centerX = int((BBOX[0] + BBOX[2]) / 2)
-        centerY = int((BBOX[1] + BBOX[3]) / 2)
+        center_x = int((bbox[0] + bbox[2]) / 2)
+        center_y = int((bbox[1] + bbox[3]) / 2)
 
-        if self.ROI[centerY, centerX, 0] == 0:
+        if self.ROI[center_y, center_x, 0] == 0:
             return True
         return False
 
-    def discardBBOX(self, BBOX):
+    def discard_bb(self, bbox):
         """ Check if a BBOX is inside a ROI
         Args:
-            BBOX: BBOX to be analyzed
+            bbox: BBOX to be analyzed
 
         """
-        intBBOX = np.asarray(BBOX, dtype=int)
-        ROIBBOX = self.ROI[intBBOX[0]:intBBOX[2], intBBOX[1]:intBBOX[3]]
-        BBOXArea = abs((intBBOX[2] - intBBOX[0]) * (intBBOX[3] - intBBOX[1]))
-        ROIArea = np.count_nonzero(ROIBBOX) / 3
+        int_bbox = np.asarray(bbox, dtype=int)
+        roi_bbox = self.ROI[int_bbox[0]:int_bbox[2], int_bbox[1]:int_bbox[3]]
+        bbox_area = abs(
+            (int_bbox[2] - int_bbox[0]) * (int_bbox[3] - int_bbox[1])
+        )
+        roi_area = np.count_nonzero(roi_bbox) / 3
 
-        ratio = ROIArea / BBOXArea
+        ratio = roi_area / bbox_area
 
         if ratio < self.threshold:
             return True
@@ -55,8 +57,8 @@ class ROIRefinement():
 
 
 if __name__ == '__main__':
-    ROIPath = AICITY_DIR.joinpath('roi.jpg')
-    refinement = ROIRefinement(ROIPath, 0.5)
+    roi_path = AICITY_DIR.joinpath('roi.jpg')
+    refinement = ROIRefiner(roi_path, 0.5)
 
     gtExtractor = annotationsParser(
         AICITY_DIR.joinpath('Anotation_40secs_AICITY_S03_C010.xml'))
@@ -70,17 +72,17 @@ if __name__ == '__main__':
         image = cv2.imread(frame_path)
 
         # Get GT BBOX
-        gtBBOX = gtExtractor.getGTBoundingBox(i)
+        bbox_gt = gtExtractor.getGTBoundingBox(i)
 
         image = cv2.imread(frame_path)
         # draw the ground-truth bounding box along with the predicted
         # bounding box
 
-        if refinement.discardBBOX(gtBBOX):
+        if refinement.discard_bb(bbox_gt):
             cv2.rectangle(
                 image,
-                (int(gtBBOX[0]), int(gtBBOX[1])),
-                (int(gtBBOX[2]), int(gtBBOX[3])),
+                (int(bbox_gt[0]), int(bbox_gt[1])),
+                (int(bbox_gt[2]), int(bbox_gt[3])),
                 (0, 0, 255),
                 2
             )
@@ -88,8 +90,8 @@ if __name__ == '__main__':
         else:
             cv2.rectangle(
                 image,
-                (int(gtBBOX[0]), int(gtBBOX[1])),
-                (int(gtBBOX[2]), int(gtBBOX[3])),
+                (int(bbox_gt[0]), int(bbox_gt[1])),
+                (int(bbox_gt[2]), int(bbox_gt[3])),
                 (0, 255, 0),
                 2
             )

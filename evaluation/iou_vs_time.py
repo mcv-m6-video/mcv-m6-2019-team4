@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from evaluation import intersection_over
 from utils.annotation_parser import annotationsParser
 from utils.detection_gt_extractor import detectionExtractorGT
-from utils.ROIRefinement import ROIRefinement
+from utils.roi_refiner import ROIRefiner
 from paths import AICITY_DIR
 
 
@@ -27,7 +27,7 @@ def run():
     threshold = 0.5
 
     ROIPath = AICITY_DIR.joinpath('roi.jpg')
-    refinement = ROIRefinement(ROIPath, 0.2)
+    refinement = ROIRefiner(ROIPath, 0.2)
 
     IoUvsFrames = []
 
