@@ -9,7 +9,6 @@ if __name__ == '__main__':
     IoU.testIoU()
 
     # Read GT from dataset
-    print(os.getcwd())
     gtExtractor = detectionExtractorGT(AICITY_DIR.joinpath('gt', 'gt.txt'))
 
     # innitialize random detector
@@ -62,16 +61,32 @@ if __name__ == '__main__':
 
             # draw the ground-truth bounding box along with the predicted
             # bounding box
-            cv2.rectangle(image, (int(detection[0]), int(detection[1])),
-                          (int(detection[2]), int(detection[3])), (0, 0, 255),
-                          2)
-            cv2.rectangle(image, (int(gtBBOX[0]), int(gtBBOX[1])),
-                          (int(gtBBOX[2]), int(gtBBOX[3])), (0, 255, 0), 2)
+            cv2.rectangle(
+                image,
+                (int(detection[0]), int(detection[1])),
+                (int(detection[2]), int(detection[3])),
+                (0, 0, 255),
+                2
+            )
+            cv2.rectangle(
+                image,
+                (int(gtBBOX[0]), int(gtBBOX[1])),
+                (int(gtBBOX[2]), int(gtBBOX[3])),
+                (0, 255, 0),
+                2
+            )
 
             # compute the intersection over union and display it
 
-            cv2.putText(image, "IoU: {:.4f}".format(maxIoU), (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            cv2.putText(
+                image,
+                "IoU: {:.4f}".format(maxIoU),
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 255, 0),
+                2
+            )
             print("{}: {:.4f}".format(frame_path, maxIoU))
 
             # show the output image
