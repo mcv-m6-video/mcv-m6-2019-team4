@@ -6,8 +6,8 @@ from sklearn import metrics
 from matplotlib import pyplot as plt
 
 from datasets.aicity_dataset import AICityDataset
-from evaluation.IoU import bb_intersection_over_union
-from load_detections import load_bounding_boxes
+from evaluation.intersection_over import bb_intersection_over_union
+from detections_loader import load_bounding_boxes
 from paths import AICITY_DIR
 
 np.set_printoptions(suppress=True)
@@ -273,24 +273,9 @@ def compute_confidence_precision_recall():
     #     a = mean_avg_precision(ious, th)
 
 
-if __name__ == '__main__':
-    verbose = False
+def run():
     pre_rec_conf = compute_confidence_precision_recall()
-    #
-    # pre_rec_conf = np.array([
-    #     [0.43071253, 0.88640822, 0.],
-    #     [0.43071253, 0.88640822, 0.1],
-    #     [0.43071253, 0.88640822, 0.2],
-    #     [0.49306358, 0.69020642, 0.3],
-    #     [0.53173077, 0.68666466, 0.4],
-    #     [0.56630435, 0.68002819, 0.5],
-    #     [0.54933921, 0.63364727, 0.6],
-    #     [0.52263158, 0.59243317, 0.7],
-    #     [0.52108108, 0.5861558, 0.8],
-    #     [0.52470588, 0.56678326, 0.9],
-    #     [1., 0., 1.]
-    # ])
-    #
+
     # pre_rec_conf = np.array([
     #     [0.43071253, 0.88640822, 0.],
     #     [0.43071253, 0.88640822, 0.03333333],
@@ -333,3 +318,8 @@ if __name__ == '__main__':
 
     AP = interpol.mean()
     print(f'AP is: {AP}')
+
+
+if __name__ == '__main__':
+    verbose = False
+    run()

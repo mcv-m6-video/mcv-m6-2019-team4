@@ -1,14 +1,15 @@
-from evaluation import IoU
-from utils.annotationsParser import annotationsParser
-from utils.detectionExtractorGT import detectionExtractorGT
-from utils.ROIRefinement import ROIRefinement
 import cv2
 import matplotlib.pyplot as plt
 
+from evaluation import intersection_over
+from utils.annotation_parser import annotationsParser
+from utils.detection_gt_extractor import detectionExtractorGT
+from utils.ROIRefinement import ROIRefinement
 from paths import AICITY_DIR
 
-if __name__ == '__main__':
-    IoU.testIoU()
+
+def run():
+    intersection_over.test_iou()
 
     # Read GT from dataset
     gtExtractor = annotationsParser(AICITY_DIR.joinpath('AICITY_team4.xml'))
@@ -73,7 +74,7 @@ if __name__ == '__main__':
 
             for y in range(len(detections)):
 
-                iou = IoU.bb_intersection_over_union(gtBBOX, detections[y])
+                iou = iou.bb_intersection_over_union(gtBBOX, detections[y])
                 if iou >= maxIoU:
                     maxIoU = iou
                     detection = detections[y]
@@ -140,3 +141,7 @@ if __name__ == '__main__':
 
     plt.plot(IoUvsFrames)
     plt.show()
+
+
+if __name__ == '__main__':
+    run()

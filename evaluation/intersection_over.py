@@ -31,7 +31,7 @@ def bb_intersection_over_union(boxA, boxB):
     return iou
 
 
-def testIoU():
+def test_iou():
     # Test function for IoU
     boxA = [0., 0., 10., 10.]
     boxB = [1., 1., 11., 11.]

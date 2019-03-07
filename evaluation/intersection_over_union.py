@@ -1,12 +1,13 @@
 import cv2
 
-from evaluation import IoU
+from evaluation import intersection_over
 from utils import randomizer
-from utils.detectionExtractorGT import detectionExtractorGT
+from utils.detection_gt_extractor import detectionExtractorGT
 from paths import AICITY_DIR
 
-if __name__ == '__main__':
-    IoU.testIoU()
+
+def run():
+    intersection_over.test_iou()
 
     # Read GT from dataset
     gtExtractor = detectionExtractorGT(AICITY_DIR.joinpath('gt', 'gt.txt'))
@@ -44,7 +45,7 @@ if __name__ == '__main__':
             BBoxDetected = -1
 
             for y in range(len(detections)):
-                iou = IoU.bb_intersection_over_union(gtBBOX, detections[y])
+                iou = iou.bb_intersection_over_union(gtBBOX, detections[y])
                 if iou >= maxIoU:
                     maxIoU = iou
                     detection = detections[y]
@@ -98,3 +99,7 @@ if __name__ == '__main__':
         for y in range(len(detections)):
             if not BBoxesDetected.__contains__(y):
                 FP = FP + 1
+
+
+if __name__ == '__main__':
+    run()

@@ -1,4 +1,4 @@
-from utils.annotationsParser import annotationsParser
+from utils.annotation_parser import annotationsParser
 import cv2
 import numpy as np
 from paths import AICITY_DIR
