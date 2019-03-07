@@ -1,8 +1,8 @@
-from evaluation import IoU
-from utils.randomDetector import randomDetector
-from utils.detectionExtractorGT import detectionExtractorGT
-import os
 import cv2
+
+from evaluation import IoU
+from utils import randomizer
+from utils.detectionExtractorGT import detectionExtractorGT
 from paths import AICITY_DIR
 
 if __name__ == '__main__':
@@ -11,11 +11,9 @@ if __name__ == '__main__':
     # Read GT from dataset
     gtExtractor = detectionExtractorGT(AICITY_DIR.joinpath('gt', 'gt.txt'))
 
-    # innitialize random detector
+    # parameters to randomize detections
     randomNoiseScale = 100
     additionDeletionProbability = 0.01
-    randomDetector = randomDetector(randomNoiseScale,
-                                    additionDeletionProbability)
 
     TP = 0
     FN = 0
@@ -32,7 +30,11 @@ if __name__ == '__main__':
                 gt.append(gtBBOX)
 
         # Get detection BBOX
-        detections = randomDetector.randomizeDetections(gt[:])
+        detections = randomizer.randomize_detections(
+            additionDeletionProbability,
+            randomNoiseScale,
+            gt[:]
+        )
         BBoxesDetected = []
 
         for x in range(len(gt)):

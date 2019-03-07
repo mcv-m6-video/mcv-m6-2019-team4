@@ -1,6 +1,5 @@
 from evaluation import IoU
 from utils.annotationsParser import annotationsParser
-# from utils.randomDetector import randomDetector
 from utils.detectionExtractorGT import detectionExtractorGT
 from utils.ROIRefinement import ROIRefinement
 import cv2
@@ -13,12 +12,6 @@ if __name__ == '__main__':
 
     # Read GT from dataset
     gtExtractor = annotationsParser(AICITY_DIR.joinpath('AICITY_team4.xml'))
-
-    # innitialize random detector
-    randomNoiseScale = 5
-    additionDeletionProbability = 0.01
-    # randomDetector = randomDetector(randomNoiseScale,
-    #                                 additionDeletionProbability)
 
     # detector = detectionExtractorGT(
     #     AICITY_DIR.joinpath('det', 'det_mask_rcnn.txt'))
