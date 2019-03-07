@@ -1,56 +1,58 @@
 from evaluation import IoU
 from utils.annotationsParser import annotationsParser
-from utils.randomDetector import randomDetector
+# from utils.randomDetector import randomDetector
 from utils.detectionExtractorGT import detectionExtractorGT
-from utils.ROIRefinement import  ROIRefinement
-import os
+from utils.ROIRefinement import ROIRefinement
 import cv2
 import matplotlib.pyplot as plt
-from time import sleep
 
-
+from paths import AICITY_DIR
 
 if __name__ == '__main__':
-
     IoU.testIoU()
 
     # Read GT from dataset
-    print(os.getcwd())
-    #gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/Anotation_40secs_AICITY_S03_C010.xml')
-    gtExtractor = annotationsParser(os.getcwd()+'/datasets/AICity_data/train/S03/c010/AICITY_team4.xml')
-    #gtExtractor = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/gt/gt.txt')
+    gtExtractor = annotationsParser(AICITY_DIR.joinpath('AICITY_team4.xml'))
 
-    #innitialize random detector
+    # innitialize random detector
     randomNoiseScale = 5
     additionDeletionProbability = 0.01
-    #randomDetector = randomDetector(randomNoiseScale,additionDeletionProbability)
+    # randomDetector = randomDetector(randomNoiseScale,
+    #                                 additionDeletionProbability)
 
-    #detector = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/det/det_mask_rcnn.txt')
-    #detector = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/det/det_ssd512.txt')
-    detector = detectionExtractorGT(os.getcwd() + '/datasets/AICity_data/train/S03/c010/det/det_yolo3.txt')
+    # detector = detectionExtractorGT(
+    #     AICITY_DIR.joinpath('det', 'det_mask_rcnn.txt'))
+    # detector = detectionExtractorGT(
+    #     AICITY_DIR.joinpath('det', 'det_ssd512.txt'))
+    detector = detectionExtractorGT(
+        AICITY_DIR.joinpath('det', 'det_yolo3.txt'))
 
     TP = 0
     FN = 0
     FP = 0
     threshold = 0.5
 
-    ROIPath = os.getcwd() + '/datasets/AICity_data/train/S03/c010/roi.jpg'
+    ROIPath = AICITY_DIR.joinpath('roi.jpg')
     refinement = ROIRefinement(ROIPath, 0.2)
 
     IoUvsFrames = []
 
-    #video = cv2.VideoWriter('video.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 10, (1920, 1080))
-    video = cv2.VideoWriter('video.avi', cv2.VideoWriter_fourcc('M','P','4','2'), 10, (1920, 1080))
+    # video = cv2.VideoWriter('video.avi',
+    #                         cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10,
+    #                         (1920, 1080))
+    video = cv2.VideoWriter('video.avi',
+                            cv2.VideoWriter_fourcc('M', 'P', '4', '2'), 10,
+                            (1920, 1080))
 
     for i in range(gtExtractor.getGTNFrames()):
 
         # load the image
-        frame_path = 'image-{:07d}.png'.format(i + 1)
-        frame_path = os.getcwd() + '/datasets/AICity_data/train/S03/c010/frames/' + frame_path
+        frame_path = AICITY_DIR.joinpath('frames',
+                                         'image-{:07d}.png'.format(i + 1))
         image = cv2.imread(frame_path)
         IoUvsFrame = []
 
-        #Get GT BBOX
+        # Get GT BBOX
 
         gt = []
         for j in range(len(gtExtractor.gt)):
@@ -58,18 +60,17 @@ if __name__ == '__main__':
                 gtBBOX = gtExtractor.getGTBoundingBox(j)
                 gt.append(gtBBOX)
 
-        #gt = refinement.refineBBOX(gt)
+        # gt = refinement.refineBBOX(gt)
 
-        #Get detection BBOX
+        # Get detection BBOX
         detections = []
         for j in range(len(detector.gt)):
             if detector.getGTFrame(j) == i:
                 detBBOX = detector.getGTBoundingBox(j)
                 detections.append(detBBOX)
-        #detections = refinement.refineBBOX(detections)
+        # detections = refinement.refineBBOX(detections)
 
         BBoxesDetected = []
-
 
         for x in range(len(gt)):
             gtBBOX = gt[x]
@@ -94,28 +95,50 @@ if __name__ == '__main__':
             # draw the ground-truth bounding box along with the predicted
             # bounding box
             if detection != []:
-                cv2.rectangle(image, (int(detection[0]), int(detection[1])),
-                            (int(detection[2]), int(detection[3])), (0, 0, 255), 2)
-            cv2.rectangle(image, (int(gtBBOX[0]), int(gtBBOX[1])),
-                          (int(gtBBOX[2]), int(gtBBOX[3])), (0, 255, 0), 2)
+                cv2.rectangle(
+                    image,
+                    (int(detection[0]), int(detection[1])),
+                    (int(detection[2]), int(detection[3])),
+                    (0, 0, 255),
+                    2
+                )
 
+            cv2.rectangle(
+                image,
+                (int(gtBBOX[0]), int(gtBBOX[1])),
+                (int(gtBBOX[2]), int(gtBBOX[3])),
+                (0, 255, 0),
+                2
+            )
 
             # compute the intersection over union and display it
             IoUvsFrame.append(maxIoU)
-            cv2.putText(image, "IoU: {:.4f}".format(maxIoU), (10, 30+20*x),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            cv2.putText(
+                image,
+                "IoU: {:.4f}".format(maxIoU),
+                (10, 30 + 20 * x),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 255, 0),
+                2
+            )
             print("{}: {:.4f}".format(frame_path, maxIoU))
 
-        if IoUvsFrame == []:
+        if not IoUvsFrame:
             IoUvsFrame = [0]
 
-        IoUvsFrames.append(sum(IoUvsFrame)/len(IoUvsFrame))
+        IoUvsFrames.append(sum(IoUvsFrame) / len(IoUvsFrame))
         for y in range(len(detections)):
             if not BBoxesDetected.__contains__(y):
                 FP = FP + 1
                 detection = detections[y]
-                cv2.rectangle(image, (int(detection[0]), int(detection[1])),
-                            (int(detection[2]), int(detection[3])), (0, 0, 255), 2)
+                cv2.rectangle(
+                    image,
+                    (int(detection[0]), int(detection[1])),
+                    (int(detection[2]), int(detection[3])),
+                    (0, 0, 255),
+                    2
+                )
 
         # show the output image
         cv2.imshow("Image", image)
