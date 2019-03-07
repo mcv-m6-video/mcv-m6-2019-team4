@@ -1,7 +1,8 @@
-from utils import flow_utils
+from optical_flow import flow_utils
 from paths import DATA_DIR
 
-if __name__ == '__main__':
+
+def run():
     # Load example sequence
     # Path to data
     flow_noc_path = DATA_DIR.joinpath(
@@ -17,3 +18,7 @@ if __name__ == '__main__':
 
     # Estimated + ground truth (side-by-side)
     flow_utils.show_flow_pair(flow_est_path, flow_noc_path)
+
+
+if __name__ == '__main__':
+    run()

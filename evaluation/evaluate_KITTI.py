@@ -3,7 +3,7 @@
 """
 Compute MSEN and PEPN for sequences 45 and 157 of the KITTI 2012 flow set.
 """
-from utils import flow_utils, flow_visualization
+from utils.optical_flow import flow_visualization, flow_utils
 from evaluation import flow_metrics
 from paths import DATA_DIR
 

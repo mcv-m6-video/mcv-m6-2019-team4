@@ -2,7 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import flow_utils
+from optical_flow import flow_utils
 
 
 def plot_optical_flow(image_file, flow_file):

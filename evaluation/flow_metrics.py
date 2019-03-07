@@ -19,7 +19,7 @@ SOFTWARE.
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import flow_utils
+from utils.optical_flow import flow_utils
 
 """
 Modified on March 2019 in the framework of a MsC project. We only take the parts of the original script 'flowlib.py' concerning optical flow: read/write + visualization in both, KITTI format ('.png') and Middlebury ('.flo'), but not in '.pfm'. 
