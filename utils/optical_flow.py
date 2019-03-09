@@ -1,4 +1,47 @@
-#!/usr/env/python3
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+import matplotlib.colors as cl
+from PIL import Image
+
+
+def plot_optical_flow(image_file, flow_file):
+    flow = read_kitti_file(flow_file)
+
+    (h, w) = flow.shape[0:2]
+    du = flow[:, :, 0]
+    dv = flow[:, :, 1]
+    valid = flow[:, :, 2]
+    U = du * valid
+    V = dv * valid
+    M = np.hypot(U, V)
+
+    X, Y = np.meshgrid(np.arange(0, w), np.arange(0, h))
+
+    step = 10
+    plt.figure()
+    # plt.title("pivot='mid'; every third arrow; units='inches'")
+
+    im = plt.imread(image_file)
+    plt.imshow(im, cmap='gray')
+
+    plt.quiver(
+        X[::step, ::step],
+        Y[::step, ::step],
+        U[::step, ::step],
+        V[::step, ::step],
+        M[::step, ::step],
+        pivot='tail',
+        units='xy',
+        color='r',
+        angles='xy',
+        scale_units='xy',
+        scale=.7
+    )
+    # plt.scatter(X[::step, ::step], Y[::step, ::step], color='r', s=2)
+    plt.show()
+
+
 """
 Copyright (c) 2019 LI RUOTENG
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -17,12 +60,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-import cv2
-import numpy as np
-import matplotlib.colors as cl
-import matplotlib.pyplot as plt
-from PIL import Image
-from evaluation import flow_metrics
 
 """
 Modified on March 2019 in the framework of a MsC project. We only take the parts of the original script 'flowlib.py'
@@ -266,33 +303,6 @@ def flow_to_image(flow):
     img[idx] = 0
 
     return np.uint8(img)
-
-
-def evaluate_flow_file(gt_file, pred_file):
-    """
-    evaluate the estimated optical flow end point error according to ground truth provided
-    :param gt_file: ground truth file path
-    :param pred_file: estimated optical flow file path
-    :return: end point error, float32
-    """
-    # Read flow files and calculate the errors
-    gt_flow = read_flow(gt_file)  # ground truth flow
-    eva_flow = read_flow(pred_file)  # predicted flow
-    # Calculate errors
-    average_pe = flow_metrics.flow_error(gt_flow[:, :, 0], gt_flow[:, :, 1],
-                                         eva_flow[:, :, 0], eva_flow[:, :, 1])
-    return average_pe
-
-
-def evaluate_flow(gt_flow, pred_flow):
-    """
-    gt: ground-truth flow
-    pred: estimated flow
-    """
-    average_pe = flow_metrics.flow_error(gt_flow[:, :, 0], gt_flow[:, :, 1],
-                                         pred_flow[:, :, 0],
-                                         pred_flow[:, :, 1])
-    return average_pe
 
 
 # Auxiliar functions to read/write flow files and visualizations in PNG format

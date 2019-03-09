@@ -1,4 +1,36 @@
-#!/usr/env/python3
+from utils import optical_flow as optical_flow_utils
+
+
+def evaluate_flow_file(gt_file, pred_file):
+    """
+    evaluate the estimated optical flow end point error according to ground truth provided
+    :param gt_file: ground truth file path
+    :param pred_file: estimated optical flow file path
+    :return: end point error, float32
+    """
+    # Read flow files and calculate the errors
+    gt_flow = optical_flow_utils.read_flow(gt_file)  # ground truth flow
+    eva_flow = optical_flow_utils.read_flow(pred_file)  # predicted flow
+    # Calculate errors
+    average_pe = flow_error(gt_flow[:, :, 0],
+                            gt_flow[:, :, 1],
+                            eva_flow[:, :, 0],
+                            eva_flow[:, :, 1])
+    return average_pe
+
+
+def evaluate_flow(gt_flow, pred_flow):
+    """
+    gt: ground-truth flow
+    pred: estimated flow
+    """
+    average_pe = flow_error(gt_flow[:, :, 0],
+                            gt_flow[:, :, 1],
+                            pred_flow[:, :, 0],
+                            pred_flow[:, :, 1])
+    return average_pe
+
+
 """
 Copyright (c) 2019 LI RUOTENG
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,11 +51,17 @@ SOFTWARE.
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from utils.optical_flow import flow_utils
+from utils import optical_flow
 
 """
-Modified on March 2019 in the framework of a MsC project. We only take the parts of the original script 'flowlib.py' concerning optical flow: read/write + visualization in both, KITTI format ('.png') and Middlebury ('.flo'), but not in '.pfm'. 
-For the complete code, please refer to: https://github.com/liruoteng/OpticalFlowToolkit
+Modified on March 2019 in the framework of a MsC project. We only take the 
+parts of the original script 'flowlib.py' concerning optical flow: 
+read/write + visualization in both, KITTI format ('.png') and Middlebury 
+('.flo'), but not in '.pfm'. 
+
+For the complete code, please refer to: 
+https://github.com/liruoteng/OpticalFlowToolkit
+
 All rights go to LI RUOTENG.
 """
 
@@ -39,8 +77,6 @@ TAU_MOTION = 3  # error smaller or equal than 3 pixels are not taken into accoun
 """
     Evaluation metrics for Optical Flow
 """
-
-from paths import DATA_DIR
 
 
 def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
@@ -62,8 +98,10 @@ def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
         plt.title('Squared difference for non-occluded pixels')
         plt.show()
 
-        # TODO: create visualization for error (just plot E as an img? Or scale it somehow before)
-        # TODO: estimated flow is more sparse than already sparse gt, improve visualization (more saturated colours,etc)
+        # TODO: create visualization for error (just plot E as an img?
+        #  Or scale it somehow before)
+        # TODO: estimated flow is more sparse than already sparse gt, improve
+        #  visualization (more saturated colours,etc)
         # Check if we want to plot anything else
         if plot > 1:
             print('Preparing 3x1 plot of estimated flow-ground truth-error')
@@ -73,8 +111,8 @@ def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
             est_flow = np.array([u, v, aux_valid]).transpose(2, 1, 0)
             # E_valid = np.array([E, aux_valid])
 
-            gt_flow_img = flow_utils.flow_to_image(gt_flow)
-            est_flow_img = flow_utils.flow_to_image(est_flow)
+            gt_flow_img = optical_flow.flow_to_image(gt_flow)
+            est_flow_img = optical_flow.flow_to_image(est_flow)
             error_img = E.transpose(1, 0)
 
             # fig, ax = plt.subplots(2, 1, sharex='col', sharey='row')
@@ -89,21 +127,27 @@ def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
     return SEN
 
 
-# TODO: MUST do the conversion inside the function and not at the evaluation function (astype(np.uint64))
+# TODO: MUST do the conversion inside the function and not at the evaluation
+#  function (astype(np.uint64))
 
 
 def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION,
                plot=0):
     """
-    * Modified on March 2019 to add MSEN(Mean Squared Error in Non-occluded areas) and	PEPN (Percentage of Erroneous
+    * Modified on March 2019 to add MSEN(Mean Squared Error in Non-occluded
+    areas) and	PEPN (Percentage of Erroneous
     Pixels in Non-occluded areas)
-    - Added the possibility of inputting a mask of valid pixels that will be used in the computation (this is based off
-     the original Matlab code from Stefan Roth ('flowAngErr_mask.m'), which additionally computed the mean angular error.
+    - Added the possibility of inputting a mask of valid pixels that will be
+    used in the computation (this is based off the original Matlab code from
+    Stefan Roth ('flowAngErr_mask.m'), which additionally computed the mean
+    angular error.
     - See 'eval_sequence(...)' below for more details.
 
-    :param plot:        enable disable one (or more) plots. The options are as follows: '0' no plot; '1', plot histogram
-    for MSEN; '>2' plot histogram (if MSEN) and figure with visual representation of the estimated, ground truth flow and
-    error (3x1)
+    :param plot:        enable disable one (or more) plots. The options are as
+    follows: '0' no plot; '1', plot histogram for MSEN; '>2' plot histogram
+    (if MSEN) and figure with visual representation of the estimated, ground
+    truth flow and error (3x1)
+
     :param tu: 			ground-truth horizontal flow map
     :param tv: 			ground-truth vertical flow map
     :param u:  			estimated horizontal flow map
@@ -116,7 +160,8 @@ def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION,
 
     """
 
-    if method == 'EPE':  # notice that this is EPEall (for all pixels, occluded + non-occluded)
+    # notice that this is EPEall (for all pixels, occluded + non-occluded)
+    if method == 'EPE':
         """
         Calculate average end point error (a.k.a. Mean End Point Error: MEPE)
         :return: End point error of the estimated flow
@@ -143,7 +188,8 @@ def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION,
         ind2 = [
             (np.absolute(stu) > SMALLFLOW) | (np.absolute(stv) > SMALLFLOW)]
 
-        # Only used if we uncomment the """angle...""" to compute 'mean angular error (mang)'
+        # Only used if we uncomment the """angle...""" to compute 'mean angular
+        # error (mang)'
         index_su = su[tuple(ind2)]
         index_sv = sv[tuple(ind2)]
         an = 1.0 / np.sqrt(index_su ** 2 + index_sv ** 2 + 1)
@@ -191,44 +237,39 @@ def flow_error(tu, tv, u, v, mask, gt_value, method='EPE', tau=TAU_MOTION,
         return PEPN
 
     else:
-        print(
-            "Non-valid error measure. Please, select one of the following: 'EPE', 'MSEN', 'PEPN'")
+        print("Non-valid error measure. Please, select one of the following: "
+              "'EPE', 'MSEN', 'PEPN'")
         return None
 
 
-"""
-    Compute metrics for a given (KITTI-formatted) sequence
-"""
-
-
 def eval_sequence(noc_path, est_path, val_path=''):
-    flow_est = flow_utils.read_flow(est_path)
+    """ Compute metrics for a given (KITTI-formatted) sequence """
+    flow_est = optical_flow.read_flow(est_path)
     u = flow_est[:, :, 0]
     v = flow_est[:, :, 1]
     # flow_est[:,:,2] is a vector of ones by default (ALL 'valid')
 
     # Load GT flows
     # Read flows in KITTI format
-    flow_gt_noc = flow_utils.read_flow(noc_path)
+    flow_gt_noc = optical_flow.read_flow(noc_path)
     gt_u_noc = flow_gt_noc[:, :, 0]
     gt_v_noc = flow_gt_noc[:, :, 1]
     noc_mask = flow_gt_noc[:, :, 2].astype(np.uint64)
 
     # Compute metrics for non-occluded pixels (EPEmat, MSEN, PEPN)
     gt_value = 0  # reject 0's in validity masks
-    # EPEmat
     EPE_mat = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value,
                          method='EPE')
-    # MSEN
+
     MSEN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value,
                       method='MSEN', plot=2)
-    # PEPN
+
     PEPN = flow_error(gt_u_noc, gt_v_noc, u, v, noc_mask, gt_value,
                       method='PEPN', tau=3)
 
     # If the valid mask is provided, compute EPEumat, EPEall
     if len(val_path) > 0:
-        flow_gt_val = flow_utils.read_flow(val_path)
+        flow_gt_val = optical_flow.read_flow(val_path)
         gt_u_val = flow_gt_val[:, :, 0]
         gt_v_val = flow_gt_val[:, :, 1]
         val_mask = flow_gt_val[:, :, 2].astype(np.uint64)
@@ -237,41 +278,24 @@ def eval_sequence(noc_path, est_path, val_path=''):
         EPE_all = flow_error(gt_u_val, gt_v_val, u, v, val_mask, gt_value,
                              method='EPE')  # don't count mask == 0
         # EPEumat
-        # A "little" bit trickier. The occluded pixels have value 0 in noc_mask and 1 in occ_mask
-        # Use logical operators with masks
-        occ_mask = ~noc_mask & val_mask  # i.e.: occluded = not in non_occluded but are valid
+        # A "little" bit trickier. The occluded pixels have value 0 in noc_mask
+        # and 1 in occ_mask
+        # Use logical operators with mask
+
+        # i.e.: occluded = not in non_occluded but are valids
+        occ_mask = ~noc_mask & val_mask
+
         EPE_umat = flow_error(gt_u_val, gt_v_val, u, v, occ_mask, gt_value,
                               method='EPE')
 
-    # Print metrics
-    print("Computed metrics:")
-    print("\tEPEmat = {:.4f}\t MSEN = {:.4f}\t PEPN = {:.2f}%".format(EPE_mat,
-                                                                      MSEN,
-                                                                      PEPN))
+        # Print metrics
+        print("Computed metrics:")
+        print(
+            f"\tEPEmat = {EPE_mat:.4f}\t MSEN = {MSEN:.4f}\t PEPN = {PEPN:.2f}%")
 
-    # Add additional metrics
-    if len(val_path) > 0:
-        print("\tEPEall = {:.4f}\t EPEumat = {:.4f}".format(EPE_all, EPE_umat))
+        # Add additional metrics
+        if len(val_path) > 0:
+            print(f"\tEPEall = {EPE_all:.4f}\t EPEumat = {EPE_umat:.4f}")
 
-
-if __name__ == '__main__':  # Testing a sequence
-    # Path to data
-    flow_noc_path = DATA_DIR.joinpath(
-        'seq157/gt/noc/000157_10.png')  # only non-occluded pixels
-    flow_val_path = DATA_DIR.joinpath(
-        'seq157/gt/occ/000157_10.png')  # ALL valid (non-occ+occluded) pixels
-    # Load the optical flow estimated via Lucas-Kanade
-    flow_est_path = DATA_DIR.joinpath('seq157/LKflow_000157_10.png')
-
-    print("Testing ALL metrics for seq. 157 KITTI 2012...\n")
-    eval_sequence(flow_noc_path, flow_est_path, flow_val_path)
-    print("Testing finished successfully")
-    print("\n")
-
-    # Path to data (not in repo!)
-    flow_noc_path = '../../devkit_kitti/matlab/data/flow_gt.png'
-    flow_est_path = '../../devkit_kitti/matlab/data/flow_est.png'
-
-    print("Testing ALL metrics for unknown KITTI testing sequence...\n")
-    eval_sequence(flow_noc_path, flow_est_path)
-    print("Testing finished successfully")
+    else:
+        print('Invalid mask.')

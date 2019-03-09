@@ -4,7 +4,7 @@ import numpy as np
 from paths import AICITY_DIR
 
 
-class ROIRefiner(object):
+class BoundingBoxFilter(object):
     def __init__(self, filepath, threshold):
 
         self.ROI = cv2.imread(str(filepath))
@@ -56,9 +56,9 @@ class ROIRefiner(object):
         return False
 
 
-if __name__ == '__main__':
+def filter_bboxes_out_of_roi():
     roi_path = AICITY_DIR.joinpath('roi.jpg')
-    refinement = ROIRefiner(roi_path, 0.5)
+    refinement = BoundingBoxFilter(roi_path, 0.5)
 
     gtExtractor = annotationsParser(
         AICITY_DIR.joinpath('Anotation_40secs_AICITY_S03_C010.xml'))
