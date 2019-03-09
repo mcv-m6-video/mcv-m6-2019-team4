@@ -4,99 +4,106 @@ import numpy as np
 from aicity_dataset import AICityDataset
 from paths import AICITY_DIR, AICITY_ANNOTATIONS
 
+def refine_bbox(bboxes: tuple, roi):
+    """ Refine a list of bounding boxes depending on their relative
+    position to the ROI image
 
-class BoundingBoxFilter(object):
-    def __init__(self, filepath, threshold):
+    Args:
+        bboxes: List of BBOXes
 
-        self.ROI = cv2.imread(str(filepath))
-        self.threshold = threshold
+    """
+    refined_bbox = []
+    for bbox in bboxes:
+        if not discard_bbox_center(bbox, roi):
+            refined_bbox.append(bbox)
+    return refined_bbox
 
-    def refine_bbox(self, bboxes):
-        """ Refine a list of bounding boxes depending on their relative position to the ROI image
-        Args:
-            bboxes: List of BBOXes
 
-        """
-        refined_bbox = []
-        for bbox in bboxes:
-            if not self.discard_bbox_center(bbox):
-                refined_bbox.append(bbox)
-        return refined_bbox
+def discard_bbox_center(bbox: tuple, roi):
+    """ Check if a BBOX is inside a ROI
 
-    def discard_bbox_center(self, bbox):
-        """ Check if a BBOX is inside a ROI
-        Args:
-            bbox: BBOX to be analyzed
+    Args:
+        bbox: BBOX to be analyzed
+    """
+    center_x = int((bbox[0] + bbox[2]) / 2)
+    center_y = int((bbox[1] + bbox[3]) / 2)
 
-        """
-        center_x = int((bbox[0] + bbox[2]) / 2)
-        center_y = int((bbox[1] + bbox[3]) / 2)
+    if roi[center_y, center_x, 0] == 0:
+        return True
+    return False
 
-        if self.ROI[center_y, center_x, 0] == 0:
-            return True
-        return False
 
-    def discard_bb(self, bbox):
-        """ Check if a BBOX is inside a ROI
-        Args:
-            bbox: BBOX to be analyzed
+def discard_bb(bbox: tuple, roi, threshold: float):
+    """ Check if a BBOX is inside a ROI
 
-        """
-        int_bbox = np.asarray(bbox, dtype=int)
-        roi_bbox = self.ROI[int_bbox[0]:int_bbox[2], int_bbox[1]:int_bbox[3]]
-        bbox_area = abs(
-            (int_bbox[2] - int_bbox[0]) * (int_bbox[3] - int_bbox[1])
+    Args:
+        bbox: BBOX to be analyzed
+    """
+    int_bbox = np.asarray(bbox, dtype=int)
+    roi_bbox = roi[int_bbox[0]:int_bbox[2], int_bbox[1]:int_bbox[3]]
+    bbox_area = abs(
+        (int_bbox[2] - int_bbox[0]) * (int_bbox[3] - int_bbox[1])
+    )
+    roi_area = np.count_nonzero(roi_bbox) / 3
+
+    ratio = roi_area / bbox_area
+
+    if ratio < threshold:
+        return True
+
+    return False
+
+
+def filter_bbox_out_of_roi(image, bbox: tuple, roi, threshold: float):
+    """ Uses opencv so colour images images are interepreted as BGR images
+
+    Args:
+        image: OpenCV Image related to the bounding box
+        bbox: 4-tuple of 2d coordinates of left top and bottom right corner
+        roi: OpenCV Image
+        threshold: discard bb if its this area ratio is outside the ROI
+    """
+
+    if discard_bb(bbox, roi, threshold):
+        cv2.rectangle(
+            img=image,
+            pt1=(int(bbox[0]), int(bbox[1])),
+            pt2=(int(bbox[2]), int(bbox[3])),
+            color=(0, 0, 255),
+            thickness=2,
         )
-        roi_area = np.count_nonzero(roi_bbox) / 3
 
-        ratio = roi_area / bbox_area
+    else:
+        cv2.rectangle(
+            img=image,
+            pt1=(int(bbox[0]), int(bbox[1])),
+            pt2=(int(bbox[2]), int(bbox[3])),
+            color=(0, 255, 0),
+            thickness=2,
+        )
+    return image
 
-        if ratio < self.threshold:
-            return True
 
-        return False
+def test_filter_bboxes_out_or_roi():
+    """ Shows images and boundig boxes of all samples of a dataset """
+    dataset = AICityDataset(AICITY_DIR, AICITY_ANNOTATIONS)
+    roi_image = cv2.imread(str(AICITY_DIR.joinpath('roi.jpg')))
 
+    for image, label in dataset:
+        # Convert to CV2 image
+        image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
-def filter_bboxes_out_of_roi():
-    roi_path = AICITY_DIR.joinpath('roi.jpg')
-    refinement = BoundingBoxFilter(roi_path, 0.5)
-
-    gtExtractor = annotationsParser(
-        AICITY_DIR.joinpath('Anotation_40secs_AICITY_S03_C010.xml'))
-
-    for i in range(len(gtExtractor.gt)):
-
-        # load the image
-        frame_path = AICITY_DIR.joinpath(
-            'frames',
-            'image-{:07d}.png'.format(gtExtractor.getGTFrame(i) + 1))
-        image = cv2.imread(frame_path)
-
-        # Get GT BBOX
-        bbox_gt = gtExtractor.getGTBoundingBox(i)
-
-        image = cv2.imread(frame_path)
-        # draw the ground-truth bounding box along with the predicted
-        # bounding box
-
-        if refinement.discard_bb(bbox_gt):
-            cv2.rectangle(
-                image,
-                (int(bbox_gt[0]), int(bbox_gt[1])),
-                (int(bbox_gt[2]), int(bbox_gt[3])),
-                (0, 0, 255),
-                2
-            )
-
-        else:
-            cv2.rectangle(
-                image,
-                (int(bbox_gt[0]), int(bbox_gt[1])),
-                (int(bbox_gt[2]), int(bbox_gt[3])),
-                (0, 255, 0),
-                2
-            )
+        bbox = (
+            label[2],
+            label[3],
+            label[4],
+            label[5],
+        )
+        output_image = filter_bbox_out_of_roi(image,
+                                              bbox,
+                                              roi_image,
+                                              threshold=0.5)
 
         # show the output image
-        cv2.imshow("Image", image)
+        cv2.imshow("Image", output_image)
         cv2.waitKey(0)

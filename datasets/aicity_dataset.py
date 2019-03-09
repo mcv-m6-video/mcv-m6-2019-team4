@@ -12,20 +12,28 @@ from paths import AICITY_DIR, AICITY_ANNOTATIONS
 class AICityDataset(object):
     """ AICity dataset containing manually annotated labels """
 
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, annotations_path: Path):
         self.root = root
-        self.labels = self._load_gt(AICITY_ANNOTATIONS)
+        self.labels = self._load_gt(annotations_path)
         self.images_paths = sorted(root.joinpath('frames').glob('*.png'))
         self.label_to_class = {'bicycle': 0, 'car': 1}
 
     def __getitem__(self, idx) -> Tuple[PIL.Image.Image, np.ndarray]:
         """ Returns a sample (image, label).
 
-        The box is a 4-tuple defining the left, upper, right, and lower pixel
+        Label is a 4-tuple defined as
+        `[frame, track_id, (coord), track_label]` where coord is a
+        4-tuple defined as two corners: top left, bottom right:
+        `[x_tl, y_tl, x_br, y_br]` pixel
         coordinates.
         """
         label = self.labels[idx]
+
+        # Reads image using PIL
         image = PIL.Image.open(self.images_paths[idx], mode='r')
+
+        # Reads image using opencv
+        # image = cv2.imread(str(self.images_paths[idx]))
 
         return image, label
 
@@ -130,16 +138,16 @@ class AICityDataset(object):
                     float(track['@ybr']),
                 )
 
-            coordinates = np.array(list(map(box_to_coord, track['box'])))
+            frame_and_coordinates = np.array(list(map(box_to_coord, track['box'])))
             bboxes = np.stack(
                 (
-                    coordinates[:, 0],
-                    np.repeat(track_id, coordinates.shape[0]),
-                    coordinates[:, 1],
-                    coordinates[:, 2],
-                    coordinates[:, 3],
-                    coordinates[:, 4],
-                    np.repeat(track_label, coordinates.shape[0]),
+                    frame_and_coordinates[:, 0],
+                    np.repeat(track_id, frame_and_coordinates.shape[0]),
+                    frame_and_coordinates[:, 1],
+                    frame_and_coordinates[:, 2],
+                    frame_and_coordinates[:, 3],
+                    frame_and_coordinates[:, 4],
+                    np.repeat(track_label, frame_and_coordinates.shape[0]),
                 ),
                 axis=1
             )
@@ -151,7 +159,7 @@ class AICityDataset(object):
 
 
 if __name__ == '__main__':
-    dataset = AICityDataset(AICITY_DIR)
+    dataset = AICityDataset(AICITY_DIR, AICITY_ANNOTATIONS)
 
     # Show first image and a crop of a detection
     image, label = dataset[0]

@@ -6,12 +6,12 @@ from matplotlib import pyplot as plt
 
 from datasets.aicity_dataset import AICityDataset
 from detections_loader import load_bounding_boxes
+
 from evaluation.intersection_over_union import iou_from_bb
 from mean_ap import get_precision_recall, select_frame
-from paths import AICITY_DIR, AICITY_ANNOTATIONS
 from utils import randomizer
 from utils.detection_gt_extractor import detectionExtractorGT
-from paths import AICITY_DIR
+from paths import AICITY_DIR, AICITY_ANNOTATIONS
 
 """ T1.1 Detection metrics detection (quantitative) """
 
@@ -291,7 +291,7 @@ def compute_average_precision():
     # detections_path = AICITY_DIR.joinpath('det', 'det_yolo3.txt')
 
     detections = load_bounding_boxes(detections_path)
-    ground_truth = AICityDataset(AICITY_DIR).get_labels()
+    ground_truth = AICityDataset(AICITY_DIR, AICITY_ANNOTATIONS).get_labels()
 
     pre_rec_conf = compute_confidence_precision_recall(
         detections=detections,
