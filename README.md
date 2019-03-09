@@ -18,6 +18,17 @@ the video sequence
 Any problem where video sequence analysis can be applied to obtain 
 accurate automatic results 
 
+# How to run
+
+Package dependencies are managed using _pipenv_. Check 
+[its documentation][pipenv_docs] or [its repository][pipenv_repo].
+
+For every week there are a group of tasks to do. They can be found organized
+in package and modules for weeks and tasks respectively, i.e. `week1\task1.py`.
+All of them can be run from `main.py` which is used to collect all work done.
+
 
 [m6]: http://pagines.uab.cat/mcv/content/m6-video-analysis
 [master]: http://pagines.uab.cat/mcv/
+[pipenv_docs]: https://pipenv.readthedocs.io/en/latest/install/
+[pipenv_repo]: https://github.com/pypa/pipenv
