@@ -28,6 +28,11 @@ def run_week1_tasks():
     # Task 4
     task4.visualise_optical_flow()
 
-
+def run_week2_tasks():
+    from week2 import task1
+    
+    task1.do_bg_estimation_single_gaussian()
+        
 if __name__ == '__main__':
-    run_week1_tasks()
+    #run_week1_tasks()
+    run_week2_tasks()
