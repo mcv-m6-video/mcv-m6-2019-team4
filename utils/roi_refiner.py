@@ -7,7 +7,7 @@ from paths import AICITY_DIR
 class ROIRefiner(object):
     def __init__(self, filepath, threshold):
 
-        self.ROI = cv2.imread(filepath)
+        self.ROI = cv2.imread(str(filepath))
         self.threshold = threshold
 
     def refine_bbox(self, bboxes):

@@ -14,7 +14,7 @@ def run():
 
     # parameters to randomize detections
     randomNoiseScale = 100
-    additionDeletionProbability = 0.01
+    additionDeletionProbability = 0.0
 
     TP = 0
     FN = 0
@@ -45,7 +45,7 @@ def run():
             BBoxDetected = -1
 
             for y in range(len(detections)):
-                iou = iou.bb_intersection_over_union(gtBBOX, detections[y])
+                iou = intersection_over.bb_intersection_over_union(gtBBOX, detections[y])
                 if iou >= maxIoU:
                     maxIoU = iou
                     detection = detections[y]
@@ -59,8 +59,8 @@ def run():
 
             # load the image
             frame_path = AICITY_DIR.joinpath('frames',
-                                             'image-{:07d}.png'.format(i + 1))
-            image = cv2.imread(frame_path)
+                                             'image-{:04d}.png'.format(i + 1))
+            image = cv2.imread(str(frame_path))
 
             # draw the ground-truth bounding box along with the predicted
             # bounding box

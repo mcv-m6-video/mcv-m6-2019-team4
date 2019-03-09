@@ -42,8 +42,8 @@ def run():
 
         # load the image
         frame_path = AICITY_DIR.joinpath('frames',
-                                         'image-{:07d}.png'.format(i + 1))
-        image = cv2.imread(frame_path)
+                                         'image-{:04d}.png'.format(i + 1))
+        image = cv2.imread(str(frame_path))
         IoUvsFrame = []
 
         # Get GT BBOX
@@ -74,7 +74,7 @@ def run():
 
             for y in range(len(detections)):
 
-                iou = iou.bb_intersection_over_union(gtBBOX, detections[y])
+                iou = intersection_over.bb_intersection_over_union(gtBBOX, detections[y])
                 if iou >= maxIoU:
                     maxIoU = iou
                     detection = detections[y]
