@@ -9,7 +9,7 @@ numpy = "*"
 xmltodict = "*"
 sklearn = "*"
 matplotlib = "*"
-opencv-python = "*"
+opencv-contrib-python = "*"
 
 [dev-packages]
 
