@@ -9,9 +9,12 @@ def estimate_bg_single_gaussian(image_file_names, roi_filename):
     #   3: roi image
 
     roi_image = cv2.imread(roi_filename,0)
+
+    # 3 dim array with all the frames
     list_images = [cv2.imread(fp,0) for fp in image_file_names]
     images = np.dstack(list_images)
 
+    # mean and stdev of each pixel along all frames
     mean = np.mean(images, axis=2)
     stdev = np.std(images, axis=2)
 
@@ -20,6 +23,8 @@ def estimate_bg_single_gaussian(image_file_names, roi_filename):
     return gaussian_image
 
 def bg_segmentation_single_gaussian(image_file_name, bg_estimation):
+    # segment FG/BG wrt estimated BG
+
     # threshold as number of sigmas
     th = 2.0
 
@@ -27,6 +32,7 @@ def bg_segmentation_single_gaussian(image_file_name, bg_estimation):
 
     segm_image = np.zeros(image.shape)
 
+    # for each pixel check if it is "inside" gaussian
     h, w = image.shape
     for x in range(1,w-1):
         for y in range(1,h-1):

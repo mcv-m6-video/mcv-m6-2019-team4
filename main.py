@@ -3,7 +3,7 @@ from evaluation import (
 )
 
 from week1 import task1, task2, task3, task4
-
+from week2 import task1
 
 def run_week1_tasks():
     """
@@ -29,9 +29,10 @@ def run_week1_tasks():
     task4.visualise_optical_flow()
 
 def run_week2_tasks():
-    from week2 import task1
-    
-    task1.do_bg_estimation_single_gaussian()
+    """
+    - Task 1: Single Gaussian modeling.
+    """
+    task1.bg_segmentation_single_gaussian()
         
 if __name__ == '__main__':
     #run_week1_tasks()

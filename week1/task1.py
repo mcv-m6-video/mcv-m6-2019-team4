@@ -5,10 +5,10 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 from datasets.aicity_dataset import AICityDataset
-from detections_loader import load_bounding_boxes
+from utils.detections_loader import load_bounding_boxes
 
 from evaluation.intersection_over_union import iou_from_bb
-from mean_ap import get_precision_recall, select_frame
+from evaluation.mean_ap import get_precision_recall, select_frame
 from utils import randomizer
 from utils.detection_gt_extractor import detectionExtractorGT
 from paths import AICITY_DIR, AICITY_ANNOTATIONS
