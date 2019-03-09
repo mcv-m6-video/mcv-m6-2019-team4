@@ -4,6 +4,7 @@ import glob
 import math
 from utils.background_estimation import bg_estimation
 import matplotlib.pyplot as plt
+import cv2
 
 def bg_segmentation_single_gaussian():
     sequence_root_dir = '../data/AICity_data/train/S03/c010/'
@@ -17,7 +18,7 @@ def bg_segmentation_single_gaussian():
     # split first 25% of frames to estimate background
     num_frames_estimation = math.floor(len(filelist) * 25 / 100)
     training_frames = filelist[0:num_frames_estimation]
-    testing_frames = filelist[num_frames_estimation+1:num_frames_estimation+3]
+    testing_frames = filelist[num_frames_estimation+1:]
     print("Using ", len(training_frames), " frames to estimate background")
 
 
@@ -30,12 +31,21 @@ def bg_segmentation_single_gaussian():
     plt.imshow(bg_est[:,:,0], cmap='gray')
     plt.show()
 
+    video_name = 'video_single_gaussian.avi'
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    video = cv2.VideoWriter(video_name, fourcc, 20.0,(1920, 1080))
+
     # background segmentation of test set
     for f in testing_frames:
+        print("Estimating frame", f)
         segm = bg_estimation.bg_segmentation_single_gaussian(f, bg_est)
 
-        plt.figure()
-        plt.imshow(segm, cmap='gray')
-        plt.show()
+        image = cv2.cvtColor(segm, cv2.COLOR_GRAY2BGR)
+        print("Writing frame", f)
+        video.write( image )
+
+        #plt.figure()
+        #plt.imshow(image)
+        #plt.show()
 
     """ Task 1.2 & 1.3: Evaluate results """

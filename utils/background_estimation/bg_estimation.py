@@ -26,10 +26,20 @@ def bg_segmentation_single_gaussian(image_file_name, bg_estimation):
     # segment FG/BG wrt estimated BG
 
     # threshold as number of sigmas
-    th = 2.0
+    th = 3.0
 
     image = cv2.imread(image_file_name,0)
 
+    m = bg_estimation[:, :, 0]
+    s = bg_estimation[:, :, 1] * th
+    dist = np.abs( m - image )
+    diff = s - dist
+    diff[diff < 0] = 255
+    diff[diff != 255] = 0
+
+    return diff.astype(np.uint8)
+
+    """
     segm_image = np.zeros(image.shape)
 
     # for each pixel check if it is "inside" gaussian
@@ -46,3 +56,4 @@ def bg_segmentation_single_gaussian(image_file_name, bg_estimation):
                 segm_image[y,x] = 255
 
     return segm_image
+    """
