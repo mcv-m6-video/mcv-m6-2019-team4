@@ -5,7 +5,6 @@ from typing import Tuple
 from evaluation import intersection_over_union
 
 np.set_printoptions(suppress=True)
-
 verbose = False
 
 

@@ -1,7 +1,8 @@
-from utils.annotation_parser import annotationsParser
 import cv2
 import numpy as np
-from paths import AICITY_DIR
+
+from aicity_dataset import AICityDataset
+from paths import AICITY_DIR, AICITY_ANNOTATIONS
 
 
 class BoundingBoxFilter(object):

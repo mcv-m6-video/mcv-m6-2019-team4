@@ -3,9 +3,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 from evaluation import intersection_over_union
-from utils.annotation_parser import annotationsParser
-from utils.detection_gt_extractor import detectionExtractorGT
-from utils.bbox_filter import BoundingBoxFilter
+from utils import annotation_parser, detection_gt_extractor
 from paths import AICITY_DIR
 
 """ T2.1 Temporal Analysis of the Result """
@@ -15,13 +13,14 @@ from paths import AICITY_DIR
 
 def iou_vs_time():
     # Read GT from dataset
-    gtExtractor = annotationsParser(AICITY_DIR.joinpath('AICITY_team4.xml'))
+    gtExtractor = annotation_parser.annotationsParser(
+        AICITY_DIR.joinpath('AICITY_team4.xml'))
 
     # detector = detectionExtractorGT(
     #     AICITY_DIR.joinpath('det', 'det_mask_rcnn.txt'))
     # detector = detectionExtractorGT(
     #     AICITY_DIR.joinpath('det', 'det_ssd512.txt'))
-    detector = detectionExtractorGT(
+    detector = detection_gt_extractor.detectionExtractorGT(
         AICITY_DIR.joinpath('det', 'det_yolo3.txt'))
 
     TP = 0
@@ -30,8 +29,6 @@ def iou_vs_time():
     threshold = 0.5
 
     ROIPath = AICITY_DIR.joinpath('roi.jpg')
-    refinement = BoundingBoxFilter(ROIPath, 0.2)
-
     IoUvsFrames = []
 
     # video = cv2.VideoWriter('video.avi',

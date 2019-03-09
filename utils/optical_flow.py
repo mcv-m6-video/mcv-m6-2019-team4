@@ -1,6 +1,6 @@
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import cv2
 import matplotlib.colors as cl
 from PIL import Image
 

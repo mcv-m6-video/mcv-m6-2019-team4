@@ -1,21 +1,14 @@
 """ Task 1: Detection metrics. """
+import cv2
 import numpy as np
 from pathlib import Path
-from typing import Tuple
-
-from sklearn import metrics
 from matplotlib import pyplot as plt
 
 from datasets.aicity_dataset import AICityDataset
-from evaluation.intersection_over_union import iou_from_bb
 from detections_loader import load_bounding_boxes
-from mean_ap import get_precision_recall, select_frame
-from paths import AICITY_DIR
-
 from evaluation.intersection_over_union import iou_from_bb
-import cv2
-
-from evaluation import intersection_over_union
+from mean_ap import get_precision_recall, select_frame
+from paths import AICITY_DIR, AICITY_ANNOTATIONS
 from utils import randomizer
 from utils.detection_gt_extractor import detectionExtractorGT
 from paths import AICITY_DIR

@@ -1,7 +1,8 @@
+from pathlib import Path
+
 import numpy as np
 
 from paths import AICITY_DIR
-from pathlib import Path
 
 
 def detections_to_bounding_boxes(detections: np.ndarray):

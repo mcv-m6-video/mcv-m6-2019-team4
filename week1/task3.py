@@ -1,10 +1,10 @@
 """ Task 3: Optical flow evaluation metrics. """
-from utils import optical_flow, optical_flow_visualization
+from utils import optical_flow
 from evaluation import optical_flow as flow_eval
 from paths import DATA_DIR
 
-
 """ T3.1 MSEN & T3.2 PEPN """
+
 
 def compute_msen_and_pepn_over_kitti():
     """
@@ -38,7 +38,7 @@ def compute_msen_and_pepn_over_kitti():
     print("Sequence 45 metrics:")
     print("MSEN = {:.4f}\t PEPN = {:.2f}%".format(MSEN, PEPN))
 
-    optical_flow_visualization.plot_optical_flow(
+    optical_flow.plot_optical_flow(
         DATA_DIR.joinpath('seq45/000045_10.png'),
         flow_noc_path)
 
@@ -70,13 +70,12 @@ def compute_msen_and_pepn_over_kitti():
     print("Sequence 157 metrics:")
     print("MSEN = {:.4f}\t PEPN = {:.2f}%".format(MSEN, PEPN))
 
-    optical_flow_visualization.plot_optical_flow(
+    optical_flow.plot_optical_flow(
         DATA_DIR.joinpath('seq157/000157_10.png'),
         flow_noc_path)
 
 
 """ T3.1 MMEN & T3.2 PPEN """
-
 
 """ T3.3 Analysis & Visualizations (baselines) """
 
@@ -91,9 +90,9 @@ def test_optical_flow_metrics():
     flow_est_path = DATA_DIR.joinpath('seq157/LKflow_000157_10.png')
 
     print("Testing ALL metrics for seq. 157 KITTI 2012...\n")
-    optical_flow.eval_sequence(flow_noc_path,
-                               flow_est_path,
-                               flow_val_path)
+    flow_eval.eval_sequence(flow_noc_path,
+                            flow_est_path,
+                            flow_val_path)
     print("Testing finished successfully")
     print("\n")
 
@@ -102,5 +101,5 @@ def test_optical_flow_metrics():
     flow_est_path = '../../devkit_kitti/matlab/data/flow_est.png'
 
     print("Testing ALL metrics for unknown KITTI testing sequence...\n")
-    optical_flow.eval_sequence(flow_noc_path, flow_est_path)
+    flow_eval.eval_sequence(flow_noc_path, flow_est_path)
     print("Testing finished successfully")

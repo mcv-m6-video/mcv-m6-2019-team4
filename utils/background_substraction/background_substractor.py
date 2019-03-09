@@ -1,10 +1,8 @@
 import cv2
 import matplotlib.pyplot as plt
 
-from evaluation import intersection_over
-from utils.annotation_parser import annotationsParser
-from utils.detection_gt_extractor import detectionExtractorGT
-from utils.roi_refiner import ROIRefiner
+from utils import annotation_parser
+from evaluation import intersection_over_union
 from paths import AICITY_DIR
 
 
@@ -28,70 +26,64 @@ class background_substractor():
         else:
             self.backSub = cv2.bgsegm.createBackgroundSubtractorMOG()
 
-
-
     def apply(self, image):
-        return(self.backSub.apply(image))
-
+        return (self.backSub.apply(image))
 
     def getBackgroungImage(self, image):
-        return(self.backSub.getBackgroundImage())
+        return (self.backSub.getBackgroundImage())
 
 
-
-def process_image (image):
-
+def process_image(image):
     return image
 
 
 def get_detections(image):
-
-    detections =[]
+    detections = []
 
     return detections
 
-def add_detections_gt (image, frame_detections, gtExtractor, frame):
-        #print detections
-        for detection in frame_detections:
-            # format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
+
+def add_detections_gt(image, frame_detections, gtExtractor, frame):
+    # print detections
+    for detection in frame_detections:
+        # format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
+        cv2.rectangle(
+            image,
+            (int(detection[0]), int(detection[1])),
+            (int(detection[2]), int(detection[3])),
+            (0, 0, 255),
+            2
+        )
+    # print gt
+    for gtBBOX in gtExtractor.gt:
+        if gtBBOX[0] == frame:
             cv2.rectangle(
                 image,
-                (int(detection[0]), int(detection[1])),
-                (int(detection[2]), int(detection[3])),
-                (0, 0, 255),
+                (int(gtBBOX[2]), int(gtBBOX[3])),
+                (int(gtBBOX[4]), int(gtBBOX[5])),
+                (0, 255, 0),
                 2
             )
-        #print gt
-        for gtBBOX in gtExtractor.gt:
-            if gtBBOX[0] == frame:
-                cv2.rectangle(
-                    image,
-                    (int(gtBBOX[2]), int(gtBBOX[3])),
-                    (int(gtBBOX[4]), int(gtBBOX[5])),
-                    (0, 255, 0),
-                    2
-                )
-        return image
-
-def compute_iou_precision_recall(gt_detections, detections, method, color_conversion):
+    return image
 
 
+def compute_iou_precision_recall(gt_detections, detections, method,
+                                 color_conversion):
     plt.plot(IoUvsFrames)
     plt.ylabel('IoU')
     plt.xlabel('Frames')
     plt.show()
-    plt.savefig('figure_' + method + '_' + str(color_conversion) +'.png')
+    plt.savefig('figure_' + method + '_' + str(color_conversion) + '.png')
 
 
 def analyze_sequence(method, color_conversion):
-
     # Read GT from dataset
-    gtExtractor = annotationsParser(AICITY_DIR.joinpath('m6-full_annotation.xml'))
+    gtExtractor = annotation_parser.annotationsParser(
+        AICITY_DIR.joinpath('m6-full_annotation.xml'))
 
     bckg_subs = background_substractor(method)
 
-
-    video_name = 'video_' + method + '_' + str(color_conversion) +'.avi'
+    video_name = 'video_' + method + '_' + str(color_conversion) + '.avi'
     video = cv2.VideoWriter(video_name,
                             cv2.VideoWriter_fourcc('X', '2', '6', '4'), 10,
                             (1920, 1080))
@@ -113,11 +105,13 @@ def analyze_sequence(method, color_conversion):
         frame_detections = get_detections(image)
 
         for detection in frame_detections:
-            detections.append [i, 0, detection[0], detection[1], detection[2], detection[3], 1]
+            detections.append[
+                i, 0, detection[0], detection[1], detection[2], detection[
+                    3], 1]
 
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
         image = add_detections_gt(image, frame_detections, gtExtractor, i)
-        #show the output image
+        # show the output image
         cv2.imshow("Image", image)
         cv2.waitKey(1)
         video.write(image)
@@ -125,11 +119,8 @@ def analyze_sequence(method, color_conversion):
     compute_iou_precision_recall(gtExtractor.gt, detections)
 
 
-
-
-def find_detections(gtExtractor, detections,threshold, IoUvsFrames, frame_path):
-
-
+def find_detections(gtExtractor, detections, threshold, IoUvsFrames,
+                    frame_path):
     IoUvsFrame = []
 
     # Get GT BBOX
@@ -150,7 +141,8 @@ def find_detections(gtExtractor, detections,threshold, IoUvsFrames, frame_path):
 
         for y in range(len(detections)):
 
-            iou = intersection_over.bb_intersection_over_union(gtBBOX, detections[y])
+            iou = intersection_over_union.iou_from_bb(gtBBOX,
+                                                      detections[y])
             if iou >= maxIoU:
                 maxIoU = iou
                 detection = detections[y]
@@ -161,7 +153,6 @@ def find_detections(gtExtractor, detections,threshold, IoUvsFrames, frame_path):
             BBoxesDetected.append(BBoxDetected)
         else:
             FN = FN + 1
-
 
         print("{}: {:.4f}".format(frame_path, maxIoU))
 
@@ -176,8 +167,7 @@ def find_detections(gtExtractor, detections,threshold, IoUvsFrames, frame_path):
 
 
 def run():
-
-    methods =[
+    methods = [
         'MOG2',
         'LSBP',
         'GMG',
@@ -186,8 +176,7 @@ def run():
         'MOG'
     ]
 
-
-    color_conversions =[
+    color_conversions = [
         cv2.COLOR_BGR2HSV,
         cv2.COLOR_BGR2Luv,
         cv2.COLOR_BGR2Lab,
@@ -196,12 +185,12 @@ def run():
         None
     ]
 
-    #analyze_sequence('MOG2', None)
+    # analyze_sequence('MOG2', None)
     analyze_sequence('MOG2', cv2.COLOR_BGR2Lab)
 
-    #for method in methods:
-     #   for color_conversion in color_conversions:
-     #   analyze_sequence(method,color_conversion)
+    # for method in methods:
+    #   for color_conversion in color_conversions:
+    #   analyze_sequence(method,color_conversion)
 
 
 if __name__ == '__main__':

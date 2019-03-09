@@ -1,5 +1,4 @@
 import xmltodict
-import random
 
 
 class annotationsParser():
