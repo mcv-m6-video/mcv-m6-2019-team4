@@ -285,6 +285,9 @@ def compute_precision_recall (detections_IoU, confidence_indices, FN, threshold,
     plt.xlabel('Recall')
     plt.title('Precision-Recall curve \n' + 'Method: ' + method + ', and color conversion: ' + str(color_conversion) + '\n' + 'mAP = ' + str(mAP))
     plt.savefig('figure_pr_curve' + method + '_' + str(color_conversion) +'.png')
+    plt.clf()
+    plt.cla()
+    plt.close()
     #plt.show()
 
 
@@ -336,6 +339,7 @@ def compute_iou(gtExtractor, detections, threshold, method, color_conversion, fr
             if not gt_detections.__contains__(x):
                 FN = FN + 1
 
+    # TODO Define confidence value for mAP computation
     compute_precision_recall(detections_IoU, detections_IoU, FN, threshold, method, color_conversion)
 
     plt.figure(2)
@@ -344,6 +348,7 @@ def compute_iou(gtExtractor, detections, threshold, method, color_conversion, fr
     plt.xlabel('Frames')
     plt.title('IoU with method: ' + method + ', and color conversion: ' + str(color_conversion))
     plt.savefig('figure_IoU' + method + '_' + str(color_conversion) +'.png')
+
     #plt.show()
 
 
@@ -395,15 +400,17 @@ def analyze_sequence(method, color_conversion):
 
 def run():
 
+    test = True
+
     methods =[
         'MOG2',
         'LSBP',
-        'GMG',
-        'GSOC',
-        'CNT',
-        'MOG',
-        'Team4-Gaussian',
-        'Team4-Adaptative'
+        #'GMG',
+        #'GSOC',
+        #'CNT',
+        #'MOG',
+        #'Team4-Gaussian',
+        #'Team4-Adaptative'
     ]
 
 
@@ -411,17 +418,22 @@ def run():
         cv2.COLOR_BGR2HSV,
         cv2.COLOR_BGR2Luv,
         cv2.COLOR_BGR2Lab,
-        cv2.COLOR_BGR2YCrCb,
-        cv2.COLOR_BGR2HLS,
+        #cv2.COLOR_BGR2YCrCb,
+        #cv2.COLOR_BGR2HLS,
         None
     ]
 
     #analyze_sequence('MOG2', None)
-    analyze_sequence('MOG2', cv2.COLOR_BGR2Lab)
+    #analyze_sequence('MOG2', cv2.COLOR_BGR2Lab)
 
-    #for method in methods:
-     #   for color_conversion in color_conversions:
-     #   analyze_sequence(method,color_conversion)
+    if not test:
+        for method in methods:
+            for color_conversion in color_conversions:
+                print ('Analyzing sequence with method: ' + method + ", and color conversion: " + str(color_conversion))
+                analyze_sequence(method,color_conversion)
+    else:
+        analyze_sequence('MOG2', None)
+
 
 
 if __name__ == '__main__':

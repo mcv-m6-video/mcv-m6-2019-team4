@@ -37,14 +37,15 @@ class annotationsParser():
 
             for BBox in BBoxes:
                 # format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
-                data = [int(BBox['@frame']),
-                        int(id),
-                        float(BBox['@xtl']),
-                        float(BBox['@ytl']),
-                        float(BBox['@xbr']),
-                        float(BBox['@ybr']),
-                        dataClass]
-                self.gt.append(data)
+                if BBox['attribute']['#text'] == 'false':
+                    data = [int(BBox['@frame']),
+                            int(id),
+                            float(BBox['@xtl']),
+                            float(BBox['@ytl']),
+                            float(BBox['@xbr']),
+                            float(BBox['@ybr']),
+                            dataClass]
+                    self.gt.append(data)
 
         for gtElement in self.gt:
             if int(gtElement[0]) > self.nFrames:
