@@ -37,7 +37,11 @@ class annotationsParser():
 
             for BBox in BBoxes:
                 # format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
-                if BBox['attribute']['#text'] == 'false':
+                if 'attribute' in BBox.keys():
+                    add_BBOX = BBox['attribute']['#text'] == 'false'
+                else:
+                    add_BBOX = True
+                if add_BBOX:
                     data = [int(BBox['@frame']),
                             int(id),
                             float(BBox['@xtl']),

@@ -58,6 +58,11 @@ def process_image (image):
     image = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(10,10))
     image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
+
+    roi_path = AICITY_DIR.joinpath('roi.jpg')
+    roi = cv2.imread(str(roi_path), 0)
+    image = cv2.bitwise_and(image, roi)
+
     return image
 
 
@@ -167,74 +172,7 @@ def get_frame_bounding_box(detections, frame):
 
     return frame_detections
 
-def compute_test(gtExtractor, detections, threshold, method, color_conversion):
 
-    IoUvsFrames = []
-    TP = 0
-    FP = 0
-    FN = 0
-    # Get GT BBOX
-    for i in range(100):
-    #for i in range(gtExtractor.getGTNFrames()):
-
-        IoUvsFrame = []
-        frame_gt = get_frame_bounding_box(gtExtractor.gt, i)
-        #for j in range(len(gtExtractor.gt)):
-        #    if gtExtractor.getGTFrame(j) == i:
-        #        frame_gt.append(gtExtractor.getGTBoundingBox(j))
-
-        frame_detections = get_frame_bounding_box(detections, i)
-        #for j in range(len(detections)):
-        #    if detections[j][0] == i:
-        #        frame_detections.append([detections[j][2], detections[j][3], detections[j][4], detections[j][5]])
-
-        BBoxesDetected = []
-        for x in range(len(frame_gt)):
-
-            maxIoU = 0
-            BBoxDetected = -1
-
-            for y in range(len(frame_detections)):
-
-                iou = intersection_over_union.iou_from_bb(frame_gt[x], frame_detections[y])
-                if iou >= maxIoU:
-                    maxIoU = iou
-                    BBoxDetected = y
-
-        if maxIoU > threshold:
-            TP = TP + 1
-            BBoxesDetected.append(BBoxDetected)
-        else:
-            FN = FN + 1
-
-            IoUvsFrame.append(maxIoU)
-
-        if not IoUvsFrame:
-            IoUvsFrame = [0]
-
-        IoUvsFrames.append(sum(IoUvsFrame) / len(IoUvsFrame))
-
-        for y in range(len(detections)):
-            if not BBoxesDetected.__contains__(y):
-                FP = FP + 1
-
-    precision = TP / (TP + FP)
-
-    if TP + FN == 0:
-        recall = 1
-    else:
-        recall = TP / (TP + FN)
-
-
-    plt.plot(IoUvsFrames)
-    plt.ylabel('IoU')
-    plt.xlabel('Frames')
-    plt.title('IoU with method: ' + method + ', and color conversion: ' + str(color_conversion))
-    plt.show()
-    filename = str(Path(__file__).parent.joinpath('figure_' + method + '_' + str(color_conversion) + '.png'))
-
-    #plt.savefig('figure_' + method + '_' + str(color_conversion) +'.png')
-    plt.savefig(filename)
 
 def compute_mAP(precision, recall):
 
@@ -348,7 +286,9 @@ def compute_iou(gtExtractor, detections, threshold, method, color_conversion, fr
     plt.xlabel('Frames')
     plt.title('IoU with method: ' + method + ', and color conversion: ' + str(color_conversion))
     plt.savefig('figure_IoU' + method + '_' + str(color_conversion) +'.png')
-
+    plt.clf()
+    plt.cla()
+    plt.close()
     #plt.show()
 
 
@@ -368,8 +308,8 @@ def analyze_sequence(method, color_conversion):
 
     detections = []
 
-    frames =100
-    #frames = gtExtractor.getGTNFrames()
+    #frames =100
+    frames = gtExtractor.getGTNFrames()
     for i in range(frames):
         # load the image
         frame_path = AICITY_DIR.joinpath('frames',
@@ -400,7 +340,7 @@ def analyze_sequence(method, color_conversion):
 
 def run():
 
-    test = True
+    test = False
 
     methods =[
         'MOG2',
