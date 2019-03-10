@@ -221,7 +221,7 @@ def compute_mean_precision_recall(detections: Path, ground_truth):
     ground_truth = np.delete(ground_truth, [1, 6], axis=1)
 
     # NOTE: synthetic data for dev
-    # detections_k, detections_gt = get_synth_data(ground_truth)
+    detections, ground_truth = get_synth_data(ground_truth)
 
     # ¿iterate?: for frame_num in np.arange(0., 40., 1.):
     # def by_frame(frame_num: float):
@@ -291,7 +291,21 @@ def compute_average_precision():
         f'AP is: {AP}'
     )
 
+    # Plot AP and its interpolation
+    plt.subplot(211)
     plt.plot(pr_table[:, 1], pr_table[:, 0])
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Mean precision as a function of mean recall')
+    plt.axis((0, 1, 0, 1.1))
+
+    plt.subplot(212)
+    plt.plot(np.linspace(0., 1.0, 11), interpol)
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Interpolated')
+    plt.axis((0, 1, 0, 1.1))
+
     plt.show()
 
 

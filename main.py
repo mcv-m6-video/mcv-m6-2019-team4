@@ -26,4 +26,5 @@ def run_week1_tasks():
 
 
 if __name__ == '__main__':
-    run_week1_tasks()
+    # run_week1_tasks()
+    task1.compute_average_precision()
