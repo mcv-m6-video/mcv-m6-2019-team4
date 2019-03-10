@@ -126,14 +126,13 @@ class SingleGaussianBackgroundModel(object):
 
         # return gaussian_image
 
-    def bg_segmentation_single_gaussian(self, image_file_name, roi_filename=''):
+    def apply(self, image, roi_filename=''):
         """
         Segments the current image into two classes: background ('0's) and foreground ('1's).
         :param image_file_name: path to the frame to segment.
         :param bg_estimation: background estimation model.
         :return: an image with black on the background, white on the foreground.
         """
-        image = cv2.imread(image_file_name, 0)
         image = image.astype(np.float64)  # maybe is not necessary
 
         # mean = # bg_estimation[:, :, 0]

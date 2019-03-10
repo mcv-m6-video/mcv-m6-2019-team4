@@ -2,56 +2,54 @@
 from paths import AICITY_DIR
 import glob
 import math
+import os
+import numpy as np
 from utils.background_estimation import bg_estimation
 import matplotlib.pyplot as plt
 import cv2
 
 
 def bg_segmentation_single_gaussian():
-    sequence_root_dir = AICITY_DIR
+    viz = True
+    # Define path to video frames
+    filepaths = sorted(glob.glob(os.path.join(str(AICITY_DIR), 'vdo_frames/image-????.png')))  # change folder name (?)
+    roi_path = os.path.join(str(AICITY_DIR), 'roi.jpg')
+    percent_back = 25
+    num_frames = len(filepaths)
+    num_backFrames = int(np.floor((percent_back / 100) * num_frames))
+    # Get back frames' names
+    back_list = filepaths[:num_backFrames]
 
-    # get frame filenames
-    filelist = sorted(glob.glob(sequence_root_dir + '*.jpg'))
-    # get roi filename
-    roi_filename = filelist[-1]
-    # remove roi.jpg
-    del filelist[-1]
-    # split first 25% of frames to estimate background
-    num_frames_estimation = math.floor(len(filelist) * 25 / 100)
-    training_frames = filelist[0:num_frames_estimation]
-    testing_frames = filelist[num_frames_estimation+1:]
-    print("Using ", len(training_frames), " frames to estimate background")
+    first_frame = cv2.imread(back_list[0], 0)
+    height, width = first_frame.shape
+    channels = 1
 
-    """ Task 1.1: Gaussian distribution """
+    # Define background model
+    SIGMA_THR = 3  # number of standard deviations to define the background/foreground threshold
+    RHO = 0.01  # memory constant (to update background)
+    ROI = False
 
-    # background estimation with train set
-    bg_est = bg_estimation.estimate_bg_single_gaussian(training_frames, roi_filename)
+    bg_model = bg_estimation.SingleGaussianBackgroundModel(height, width, channels, SIGMA_THR, RHO, ROI)
 
-    plt.figure()
-    plt.imshow(bg_est[:, :, 0], cmap='gray')
-    plt.show()
+    print("Estimating background with first '{0}'% of frames".format(percent_back))
+    bg_model.estimate_bg_single_gaussian(back_list)  # MUST speed this up, it takes more than a minute
 
-    # video_name = 'video_single_gaussian.avi'
-    # fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    # video = cv2.VideoWriter(video_name, fourcc, 20.0, (1920, 1080))
+    if viz:
+        plt.figure()
+        plt.imshow(bg_model.mean, cmap='gray')
+        plt.show()
 
-    # better to use h264 + mp4 as container
-    video_name = 'video_single_gaussian.mp4'
-    fourcc = cv2.VideoWriter_fourcc(*'X264')
-    # Original video is only 10fps, may want to keep it at that
-    video = cv2.VideoWriter(video_name, fourcc, 20.0, (1920, 1080))
+    # Detect foregound (rest of the sequence)
+    fore_list = filepaths[num_backFrames:]
 
-    # background segmentation of test set
-    for f in testing_frames:
-        print("Estimating frame", f)
-        segm = bg_estimation.bg_segmentation_single_gaussian(f, bg_est)
+    # Define video writer
+    video_name = 'background_estimation_single_gaussian_f_ROI_off.avi'
+    video = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc('X', 'V', 'I', 'D'), 10, (width, height))
 
+    for frame in fore_list:
+        print("Segmenting FG/BG frame: {0}".format(frame))
+        segm = bg_model.apply( cv2.imread(frame,0), roi_filename=roi_path)
         image = cv2.cvtColor(segm, cv2.COLOR_GRAY2BGR)
-        print("Writing frame", f)
-        video.write( image )
+        video.write(image)
 
-        # plt.figure()
-        # plt.imshow(image)
-        # plt.show()
-
-    """ Task 1.2 & 1.3: Evaluate results """
+    print("Video", video_name, "generated")
