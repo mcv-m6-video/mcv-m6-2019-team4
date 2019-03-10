@@ -21,72 +21,36 @@ class AICityDataset(object):
     def __getitem__(self, idx) -> Tuple[PIL.Image.Image, np.ndarray]:
         """ Returns a sample (image, label).
 
+        The image is a PIL.Image (RGB)
+
         Label is a 4-tuple defined as
         `[frame, track_id, (coord), track_label]` where coord is a
         4-tuple defined as two corners: top left, bottom right:
         `[x_tl, y_tl, x_br, y_br]` pixel
         coordinates.
         """
-        label = self.labels[idx]
-
-        # Reads image using PIL
-        image = PIL.Image.open(self.images_paths[idx], mode='r')
-
         # Reads image using opencv
         # image = cv2.imread(str(self.images_paths[idx]))
 
-        return image, label
+        # Reads image using PIL
+        return (
+            PIL.Image.open(self.images_paths[idx], mode='r'),
+            self.labels[idx]
+        )
 
     def __len__(self):
         return self.labels.shape[0]
 
     def get_labels(self) -> np.ndarray:
-        return self.labels
+        """ Returns all labels
 
-    # def get_labels(self) -> np.ndarray:
-    #     """ Read XML and parse data
-    #
-    #     Output is formatted as:
-    #     ```
-    #     [frame, id, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
-    #     ```
-    #     """
-    #     with AICITY_ANNOTATIONS.open('r') as file:
-    #         labels = xmltodict.parse(file.read())
-    #
-    #     tracks = labels['annotations']['track']
-    #
-    #     def tracks_to_bboxes(track):
-    #         track_id = float(track['@id'])
-    #         track_label = self.label_to_class.get(str(track['@label']))
-    #
-    #         def box_to_coord(track):
-    #             return (
-    #                 float(track['@frame']),
-    #                 float(track['@xtl']),
-    #                 float(track['@ytl']),
-    #                 float(track['@xbr']),
-    #                 float(track['@ybr']),
-    #             )
-    #
-    #         coordinates = np.array(list(map(box_to_coord, track['box'])))
-    #         bboxes = np.stack(
-    #             (
-    #                 coordinates[:, 0],
-    #                 np.repeat(track_id, coordinates.shape[0]),
-    #                 coordinates[:, 1],
-    #                 coordinates[:, 2],
-    #                 coordinates[:, 3],
-    #                 coordinates[:, 4],
-    #                 np.repeat(track_label, coordinates.shape[0]),
-    #             ),
-    #             axis=1
-    #         )
-    #         return bboxes
-    #
-    #     bbs = map(tracks_to_bboxes, tracks)
-    #     bbs = np.vstack(list(bbs))
-    #     return bbs
+        A label is a 4-tuple defined as
+        `[frame, track_id, (coord), track_label]` where coord is a
+        4-tuple defined as two corners: top left, bottom right:
+        `[x_tl, y_tl, x_br, y_br]` pixel
+        coordinates.
+        """
+        return self.labels
 
     def _load_gt(self, path) -> np.ndarray:
         """ Return all car bounding boxes """
@@ -125,6 +89,7 @@ class AICityDataset(object):
         # car_bboxes = np.array(list(map(anno_to_bboxes, car_annotations)))
 
         label_to_class = {'bicycle': 0, 'car': 1}
+
         def tracks_to_bboxes(track):
             track_id = float(track['@id'])
             track_label = label_to_class.get(str(track['@label']))
@@ -138,7 +103,8 @@ class AICityDataset(object):
                     float(track['@ybr']),
                 )
 
-            frame_and_coordinates = np.array(list(map(box_to_coord, track['box'])))
+            frame_and_coordinates = np.array(
+                list(map(box_to_coord, track['box'])))
             bboxes = np.stack(
                 (
                     frame_and_coordinates[:, 0],

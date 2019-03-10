@@ -208,17 +208,12 @@ def load_precomputed_precision_recall_data():
     ])
 
 
-def compute_confidence_precision_recall(detections: Path, ground_truth):
-    print(f'GT detections: {ground_truth.shape}')
-    print(f'Detections: {detections.shape}\n')
+def compute_mean_precision_recall(detections: Path, ground_truth):
+    """  Computes mean precision and recall for each frame
 
-    # Select detections only for some frames (it's time consuming)
-    detections = detections[detections[:, 0] >= 1090., :]
-    detections = detections[detections[:, 0] <= 1130., :]
-
-    ground_truth = ground_truth[ground_truth[:, 0] >= 1090., :]
-    ground_truth = ground_truth[ground_truth[:, 0] <= 1130., :]
-
+    Returns:
+         [precision, recall, confidence] column table
+    """
     # Ensure all bb belong to the class bicycle
     # assert all(detections_gt[:, 6]) == 0.0
 
@@ -239,48 +234,22 @@ def compute_confidence_precision_recall(detections: Path, ground_truth):
     # precisions, recalls = p_and_r_list[:, 0], p_and_r_list[:, 1]
 
     # Compute precision as a function of recall [[precision, recall, conf],]
-    confidence_precision_recall = np.array([
+    pr_table = np.array([
         (
-            *mean_ap.get_precision_recall(detections, ground_truth,
-                                          th=confidence),
+            *mean_ap.get_precision_recall(detections,
+                                          ground_truth,
+                                          threshold=confidence),
             confidence,
         )
         for confidence in np.linspace(0.0, 1.0, 31)
     ])
 
-    # Sort table by increasing recall
-    confidence_precision_recall = confidence_precision_recall[
-        confidence_precision_recall[:, 1].argsort()]
-
-    print(f'Table (sorted): precision, recall, confidence\n'
-          f'{confidence_precision_recall}')
-
-    plt.plot(confidence_precision_recall[:, 1],
-             confidence_precision_recall[:, 0])
-
-    plt.show()
-    return confidence_precision_recall
+    return pr_table
 
     # TODO (jon) somehow, iterate selecting only the detections with diff
     #  confidence score to get a list of precision and recalls, so then
     #  somehow average and mean
-    # img, gt = ds[0]
-    # print(gt)
-    # img.crop(gt).show()
-    # print(detections[0][1:])
-    # img.show()
-    # img.crop(detections[0][1:]).show()
-
     # metrics.average_precision_score()
-
-    # ious = [bb_intersection_over_union(label, label) for _, label in ds]
-    # assert sum(ious) == len(ious)
-
-    # mean_avg_precision(ious, .5)
-    # mean_avg_precision(ious, .75)
-
-    # for th in np.arange(start=.5, stop=.95, step=.05):
-    #     a = mean_avg_precision(ious, th)
 
 
 def compute_average_precision():
@@ -289,24 +258,41 @@ def compute_average_precision():
     # detections_path = AICITY_DIR.joinpath('det', 'det_yolo3.txt')
 
     detections = detections_loader.load_bounding_boxes(detections_path)
-    ground_truth = AICityDataset(AICITY_DIR, AICITY_ANNOTATIONS).get_labels()
+    dataset = AICityDataset(AICITY_DIR, AICITY_ANNOTATIONS)
+    ground_truth = dataset.get_labels()
 
-    pre_rec_conf = compute_confidence_precision_recall(
+    # Select detections only for frames we have ground truth
+    mask = np.zeros(detections.shape[0], dtype=np.bool)
+    for frame_number in ground_truth[:, 0]:
+        mask |= detections[:, 0] == frame_number
+
+    detections = detections[mask]
+
+    # pr_table = load_precomputed_precision_recall_data()
+    pr_table = compute_mean_precision_recall(
         detections=detections,
         ground_truth=ground_truth,
     )
 
-    pre_rec_conf = load_precomputed_precision_recall_data()
-
     # Interpolate data and retrieve Precision for Recall = {0., 0.1, ... 1.0}
+    pr_table = pr_table[pr_table[:, 1].argsort()]
+
     interpol = np.interp(
         x=np.linspace(0., 1.0, 11),
-        xp=pre_rec_conf[:, 1],
-        fp=pre_rec_conf[:, 0],
+        xp=pr_table[:, 1],
+        fp=pr_table[:, 0],
     )
 
     AP = interpol.mean()
-    print(f'AP is: {AP}')
+
+    print(
+        f'Table (sorted): precision, recall, confidence\n'
+        f'{pr_table}\n'
+        f'AP is: {AP}'
+    )
+
+    plt.plot(pr_table[:, 1], pr_table[:, 0])
+    plt.show()
 
 
 """ T1.4 Foreground detection (qualitative) """

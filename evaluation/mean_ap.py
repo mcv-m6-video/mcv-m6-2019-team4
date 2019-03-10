@@ -17,8 +17,10 @@ def binary_test(detections: np.ndarray,
 
     Args:
         threshold: IoU threshold
+
+    Returns:
+        precision, recall
     """
-    print(f'[binary_test] th: {threshold}')
     if detections.shape[0] == 0:
         # If no detection: Precision = 0/0, and Recall = 0/FN
         return 1, 0
@@ -116,45 +118,42 @@ def select_frame(detections: np.ndarray, idx: float) -> np.ndarray:
 
 def get_precision_recall(detections,
                          detections_gt,
-                         th: float):
+                         threshold: float) -> Tuple[np.float, np.float]:
     """ Gets precision and recall from detections and the ground truth
 
-    Args:
-        th: discard detections with lower confidence score than th
-    """
-    print(f'[get_precision_recall] th: {th}')
+    Computes the mean precision and recall for IoU values [0.5, 0.55, .. 1.0],
+    of detections which confidence score is higher than a threshold
 
-    # Discard lower `score` than `confidence_score` from detections
-    detections = detections[detections[:, 5] >= th]
+    Args:
+        threshold: discard detections with lower confidence score than th
+
+    Returns:
+        precision, recall
+    """
+    # Discards lower `score` than `confidence_score` from detections
+    detections = detections[detections[:, 5] >= threshold]
+
+    print(f'Getting PR for th = {threshold}')
 
     if verbose:
-        print(
-            f'Detections with conf. score over {th}: '
-            f'{detections.shape}')
+        print(f'Detections with conf. score over {threshold}: '
+              f'{detections.shape}')
 
-    # Discard scores
-    if not verbose:
-        print(f'Discarding id, class and scores. '
-              f'Only [frame, Left, Upper, Right, Lower]')
-        print(f'GT detections: {detections_gt.shape}')
-        print(f'Detections: {detections.shape}')
+    # Discards info not related to bbox coordinates
     detections = np.delete(detections, [5], axis=1)
     detections_gt = delete_frame_info(detections_gt)
     detections = delete_frame_info(detections)
+    assert detections.shape[1] == 4, 'BUG: Detections size is not correct'
+    assert detections_gt.shape[1] == 4, 'BUG: Detections size is not correct'
 
-    if not verbose:
-        print(f'GT detections: {detections_gt.shape}')
-        print(f'Detections: {detections.shape}')
+    # Computes mean precision-recall in frame over IoU th {0.5, 0.55, ... 0.95}
+    pr = np.array([binary_test(detections, detections_gt, th)
+                   for th in np.arange(0.5, 1.0, 0.05)])
+    mean_pr = pr.mean(axis=0)
+    mean_precision, mean_recall = mean_pr[0], mean_pr[1]
 
-    # computes mean precision in frame over IoU th {0.5, 0.55, ... 0.95}
-    pr_rec = np.array([binary_test(detections, detections_gt, th)
-                       for th in np.arange(0.5, 1.0, 0.05)])
+    if verbose:
+        print(f'Mean Precision: {mean_precision}')
+        print(f'Mean Recall: {mean_recall}\n')
 
-    m_pr_rec = pr_rec.mean(axis=0)
-    precision, recall = m_pr_rec[0], m_pr_rec[1]
-
-    if not verbose:
-        print(f'Precision: {precision}')
-        print(f'Recall: {recall}\n')
-
-    return precision, recall
+    return mean_precision, mean_recall

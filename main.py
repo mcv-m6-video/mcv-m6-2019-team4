@@ -1,7 +1,3 @@
-from evaluation import (
-    mean_ap,
-)
-
 from week1 import task1, task2, task3, task4
 
 
@@ -17,7 +13,7 @@ def run_week1_tasks():
     task1.test_iou_with_noise()
 
     # Task 1.2: mAP
-    mean_ap.compute_average_precision()
+    task1.compute_average_precision()
 
     # Task 2.1: IoU over time
     task2.iou_vs_time()
