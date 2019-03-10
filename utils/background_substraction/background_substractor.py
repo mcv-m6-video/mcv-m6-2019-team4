@@ -28,6 +28,12 @@ class background_substractor():
             self.backSub = cv2.createBackgroundSubtractorGSOC()
         elif method == 'CNT':
             self.backSub = cv2.createBackgroundSubtractorCNT()
+        elif method == 'Team4-Gaussian':
+            #Our own implementatiom
+            self.backSub = cv2.createBackgroundSubtractorCNT()
+        elif method == 'Team4-Adaptative':
+            # Our own implementatiom
+            self.backSub = cv2.createBackgroundSubtractorCNT()
         else:
             self.backSub = cv2.bgsegm.createBackgroundSubtractorMOG()
 
@@ -148,11 +154,79 @@ def add_detections_gt (image, frame_detections, gtExtractor, frame):
                 )
         return image
 
-def compute_iou_precision_recall(gt_detections, detections, method, color_conversion):
+def get_frame_bounding_box(detections, frame):
+
+
+    frame_detections = []
+    for j in range(len(detections)):
+        if detections[j][0] == frame:
+            frame_detections.append([detections[j][2], detections[j][3], detections[j][4], detections[j][5]])
+
+    return frame_detections
+
+def compute_precision_recall(gtExtractor, detections, threshold, method, color_conversion):
+
     IoUvsFrames = []
+    TP = 0
+    FP = 0
+    FN = 0
+    # Get GT BBOX
+    for i in range(100):
+    #for i in range(gtExtractor.getGTNFrames()):
+
+        IoUvsFrame = []
+        frame_gt = get_frame_bounding_box(gtExtractor.gt, i)
+        #for j in range(len(gtExtractor.gt)):
+        #    if gtExtractor.getGTFrame(j) == i:
+        #        frame_gt.append(gtExtractor.getGTBoundingBox(j))
+
+        frame_detections = get_frame_bounding_box(detections, i)
+        #for j in range(len(detections)):
+        #    if detections[j][0] == i:
+        #        frame_detections.append([detections[j][2], detections[j][3], detections[j][4], detections[j][5]])
+
+        BBoxesDetected = []
+
+        for x in range(len(frame_gt)):
+            maxIoU = 0
+            BBoxDetected = -1
+
+            for y in range(len(frame_detections)):
+
+                iou = intersection_over_union.iou_from_bb(frame_gt[x], frame_detections[y])
+                if iou >= maxIoU:
+                    maxIoU = iou
+                    BBoxDetected = y
+
+            if maxIoU > threshold:
+                TP = TP + 1
+                BBoxesDetected.append(BBoxDetected)
+            else:
+                FN = FN + 1
+
+            IoUvsFrame.append(maxIoU)
+
+        if not IoUvsFrame:
+            IoUvsFrame = [0]
+
+        IoUvsFrames.append(sum(IoUvsFrame) / len(IoUvsFrame))
+
+        for y in range(len(detections)):
+            if not BBoxesDetected.__contains__(y):
+                FP = FP + 1
+
+    precision = TP / (TP + FP)
+
+    if TP + FN == 0:
+        recall = 1
+    else:
+        recall = TP / (TP + FN)
+
+
     plt.plot(IoUvsFrames)
     plt.ylabel('IoU')
     plt.xlabel('Frames')
+    plt.title('IoU with method: ' + method + ', and color conversion: ' + str(color_conversion))
     plt.show()
     plt.savefig('figure_' + method + '_' + str(color_conversion) +'.png')
 
@@ -167,13 +241,14 @@ def analyze_sequence(method, color_conversion):
 
     video_name = 'video_' + method + '_' + str(color_conversion) +'.avi'
     video = cv2.VideoWriter(video_name,
-                            cv2.VideoWriter_fourcc('M', 'P', '4', 'S'), 10,
+                            cv2.VideoWriter_fourcc('M', 'P', '4', 'S'), 20,
+                            #cv2.VideoWriter_fourcc('H', '2', '6', '4'), 10,
                             (1920, 1080))
 
     detections = []
 
     #for i in range(gtExtractor.getGTNFrames()):
-    for i in range(200):
+    for i in range(100):
         # load the image
         frame_path = AICITY_DIR.joinpath('frames',
                                          'image-{:04d}.png'.format(i + 1))
@@ -197,57 +272,8 @@ def analyze_sequence(method, color_conversion):
         cv2.waitKey(1)
         video.write(image)
 
-    compute_iou_precision_recall(gtExtractor.gt, detections,method, color_conversion)
+    compute_precision_recall(gtExtractor, detections,0.5 ,method, color_conversion)
 
-
-
-
-def find_detections(gtExtractor, detections,threshold, IoUvsFrames, frame_path):
-
-
-    IoUvsFrame = []
-
-    # Get GT BBOX
-
-    gt = []
-    for j in range(len(gtExtractor.gt)):
-        if gtExtractor.getGTFrame(j) == j:
-            gtBBOX = gtExtractor.getGTBoundingBox(j)
-            gt.append(gtBBOX)
-
-    BBoxesDetected = []
-
-    for x in range(len(gt)):
-        gtBBOX = gt[x]
-        detection = []
-        maxIoU = 0
-        BBoxDetected = -1
-
-        for y in range(len(detections)):
-
-            iou = intersection_over_union.bb_intersection_over_union(gtBBOX, detections[y])
-            if iou >= maxIoU:
-                maxIoU = iou
-                detection = detections[y]
-                BBoxDetected = y
-
-        if maxIoU > threshold:
-            TP = TP + 1
-            BBoxesDetected.append(BBoxDetected)
-        else:
-            FN = FN + 1
-
-
-        print("{}: {:.4f}".format(frame_path, maxIoU))
-
-    if not IoUvsFrame:
-        IoUvsFrame = [0]
-
-    IoUvsFrames.append(sum(IoUvsFrame) / len(IoUvsFrame))
-    for y in range(len(detections)):
-        if not BBoxesDetected.__contains__(y):
-            FP = FP + 1
-            detection = detections[y]
 
 
 def run():
@@ -258,7 +284,9 @@ def run():
         'GMG',
         'GSOC',
         'CNT',
-        'MOG'
+        'MOG',
+        'Team4-Gaussian',
+        'Team4-Adaptative'
     ]
 
 
