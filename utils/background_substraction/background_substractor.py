@@ -16,6 +16,10 @@ MAX_AREA =  500000
 
 class background_substractor():
 
+    """  Wrapper class for applying background substraction models
+
+    """
+
     def __init__(self, method):
 
         self.method = method
@@ -43,6 +47,13 @@ class background_substractor():
 
 
     def apply(self, image):
+
+        """  Apply background substraction to an image according to the model initialized
+
+        Returns:
+            Background substracted image
+        """
+
         return(self.backSub.apply(image))
 
 
@@ -52,6 +63,15 @@ class background_substractor():
 
 
 def process_image (image):
+    """  Apply  following operations to backgrouns substracted image to improve moving object detection:
+            - Thresholding to remove shadows in some models
+            - Morphological opening with a 5x5 circular structuring element to reduce noise
+            - Morphological closing with a 10x10 circular structuring element to fill objects
+            - Apply roi.jog mask
+
+    Returns:
+        Processed image
+    """
 
     ret, image = cv2.threshold(image, 130, 255, cv2.THRESH_BINARY)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(4,4))
@@ -67,6 +87,12 @@ def process_image (image):
 
 
 def get_detections(image):
+    """  Given a binarized image, find connected components as detections
+        Applies a non maxima suppression algorithm to merge similar detections
+
+    Returns:
+        Detections
+    """
 
     detections =[]
 
@@ -140,29 +166,40 @@ def non_max_suppression_fast(boxes, overlapThresh):
 
 
 def add_detections_gt (image, frame_detections, gtExtractor, frame):
-        #print detections
-        for detection in frame_detections:
-            # format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
+    """  Add bounding boxes to GT and detections on a given image
+
+    Returns:
+        Image with rectangles corresponding to GT and detections
+    """
+
+    #print detections
+    for detection in frame_detections:
+        # format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
+        cv2.rectangle(
+            image,
+            (int(detection[0]), int(detection[1])),
+            (int(detection[2]), int(detection[3])),
+            (0, 0, 255),
+            2
+        )
+    #print gt
+    for gtBBOX in gtExtractor.gt:
+        if gtBBOX[0] == frame:
             cv2.rectangle(
                 image,
-                (int(detection[0]), int(detection[1])),
-                (int(detection[2]), int(detection[3])),
-                (0, 0, 255),
+                (int(gtBBOX[2]), int(gtBBOX[3])),
+                (int(gtBBOX[4]), int(gtBBOX[5])),
+                (0, 255, 0),
                 2
             )
-        #print gt
-        for gtBBOX in gtExtractor.gt:
-            if gtBBOX[0] == frame:
-                cv2.rectangle(
-                    image,
-                    (int(gtBBOX[2]), int(gtBBOX[3])),
-                    (int(gtBBOX[4]), int(gtBBOX[5])),
-                    (0, 255, 0),
-                    2
-                )
-        return image
+    return image
 
 def get_frame_bounding_box(detections, frame):
+    """  Filter bounding boxes by frame
+
+    Returns:
+        List with all bounding boxes corresponding to a given frame
+    """
 
 
     frame_detections = []
@@ -175,6 +212,12 @@ def get_frame_bounding_box(detections, frame):
 
 
 def compute_mAP(precision, recall):
+    """  Given a list of precision and recall, compute mAP
+
+    Returns:
+        mean average precision
+    """
+
 
     mAP = 0
 
@@ -190,6 +233,10 @@ def compute_mAP(precision, recall):
 
 
 def compute_precision_recall (detections_IoU, confidence_indices, FN, threshold, method, color_conversion):
+
+    """  Compute precision and recall given a list of IoU detections. Saves Precision-Recall curve
+
+    """
 
     precision = []
     recall = []
@@ -230,6 +277,9 @@ def compute_precision_recall (detections_IoU, confidence_indices, FN, threshold,
 
 
 def compute_iou(gtExtractor, detections, threshold, method, color_conversion, frames):
+
+    """  Compute correspondences (and IoU) between detections and GT. Plots IoU vs number of frames.
+    """
 
     IoUvsFrames = []
     detections_IoU = []
@@ -293,6 +343,9 @@ def compute_iou(gtExtractor, detections, threshold, method, color_conversion, fr
 
 
 def analyze_sequence(method, color_conversion):
+
+    """  Analyze the video sequence with a given method and color conversion
+    """
 
     # Read GT from dataset
     gtExtractor = annotationsParser(AICITY_DIR.joinpath('m6-full_annotation.xml'))
