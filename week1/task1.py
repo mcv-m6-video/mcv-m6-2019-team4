@@ -149,9 +149,23 @@ def test_iou_with_noise():
 """ T1.3 Detection metrics detection (quantitative) """
 
 
-def get_synth_data(detections_gt):
+def get_synth_data_perfect_match():
+    ground_truth = np.array([
+        [0., 100., 100., 200., 200.],
+        [0., 300., 300., 400., 400.],
+        [0., 500., 500., 600., 600.],
+    ])
+    detections = np.array([
+        [0., 100., 100., 200., 200., .9],  # true pos iou = 1
+        [0., 300., 300., 400., 400., .5],  # true pos iou = 1
+        [0., 500., 500., 600., 600., .2],  # true pos iou = 1
+    ])
+    return detections, ground_truth
+
+
+def get_synth_data():
     """ Synthetic detections and gt for development """
-    detections_gt = np.array([
+    ground_truth = np.array([
         [0., 100., 100., 200., 200.],
         [0., 300., 300., 400., 400.],
         [0., 500., 500., 600., 600.],
@@ -159,13 +173,13 @@ def get_synth_data(detections_gt):
     detections = np.array([
         [0., 100., 100., 200., 200., .9],  # true pos iou = 1
         [0., 300., 300., 350., 350., .5],  # true pos iou = 0.25
-        # [0., 500., 500., 600., 600.],   # missed out (fn) iou = 0
+        # [0., 500., 500., 600., 600., .2],   # missed out (fn) iou = 0
         [0., 700., 700., 800., 800., .6],  # false pos iou = 0
         [0., 900., 900., 1000., 1000., .4],  # false pos iou = 0
         [0., 1100., 1100., 1200., 1200., .2],  # false pos iou = 0
     ])
 
-    return detections, detections_gt
+    return detections, ground_truth
 
 
 def load_precomputed_precision_recall_data():
@@ -221,17 +235,8 @@ def compute_mean_precision_recall(detections: Path, ground_truth):
     ground_truth = np.delete(ground_truth, [1, 6], axis=1)
 
     # NOTE: synthetic data for dev
-    detections, ground_truth = get_synth_data(ground_truth)
-
-    # ¿iterate?: for frame_num in np.arange(0., 40., 1.):
-    # def by_frame(frame_num: float):
-    # detections_gt_k = select_frame(detections_gt, frame_num)
-    # detections_k = select_frame(detections, frame_num)
-    # p_and_r_list = np.array([by_frame(frame_num)
-    #                          for frame_num in
-    #                          np.arange(1., 40., 1.)])
-    #
-    # precisions, recalls = p_and_r_list[:, 0], p_and_r_list[:, 1]
+    # detections, ground_truth = get_synth_data_perfect_match()
+    # detections, ground_truth = get_synth_data()
 
     # Compute precision as a function of recall [[precision, recall, conf],]
     pr_table = np.array([
