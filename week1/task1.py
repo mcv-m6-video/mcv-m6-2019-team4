@@ -1,7 +1,6 @@
 """ Task 1: Detection metrics. """
 import cv2
 import numpy as np
-from pathlib import Path
 from matplotlib import pyplot as plt
 
 from datasets.aicity_dataset import AICityDataset
@@ -222,42 +221,28 @@ def load_precomputed_precision_recall_data():
     ])
 
 
-def compute_mean_precision_recall(detections: Path, ground_truth):
-    """  Computes mean precision and recall for each frame
+def compute_mAP(verbose: bool = False, plot: bool = False):
+    """ Compute mAP given some detections and a ground truth.
 
-    Returns:
-         [precision, recall, confidence] column table
+    It only gets the detections where we have ground truth information
+    (regardless there is a bounding box on it or not)
+
+    Note:
+        Algorithm implemented::
+
+            * For every frame
+                * For each confidence level
+                    * Compute precision-recall (consider TP when IoU >= 0.5)
+                * Interpolate precision using 11 ranks r={0.0, 0.1, ... 1.0}
+                * AP = Average for all interpolated precisions
+            * mAP = Mean of AP for all frames
     """
-    # Ensure all bb belong to the class bicycle
-    # assert all(detections_gt[:, 6]) == 0.0
 
-    # Discard `id` and `class` information from gt
-    ground_truth = np.delete(ground_truth, [1, 6], axis=1)
+    # Parameters
+    iou_threshold = 0.5
+    recalls = np.linspace(start=0, stop=1.0, num=11).round(decimals=1)
 
-    # NOTE: synthetic data for dev
-    # detections, ground_truth = get_synth_data_perfect_match()
-    # detections, ground_truth = get_synth_data()
-
-    # Compute precision as a function of recall [[precision, recall, conf],]
-    pr_table = np.array([
-        (
-            *mean_ap.get_precision_recall(detections,
-                                          ground_truth,
-                                          threshold=confidence),
-            confidence,
-        )
-        for confidence in np.linspace(0.0, 1.0, 31)
-    ])
-
-    return pr_table
-
-    # TODO (jon) somehow, iterate selecting only the detections with diff
-    #  confidence score to get a list of precision and recalls, so then
-    #  somehow average and mean
-    # metrics.average_precision_score()
-
-
-def compute_average_precision():
+    # Selects detections from available model predictions
     detections_path = AICITY_DIR.joinpath('det', 'det_mask_rcnn.txt')
     # detections_path = AICITY_DIR.joinpath('det', 'det_ssd512.txt')
     # detections_path = AICITY_DIR.joinpath('det', 'det_yolo3.txt')
@@ -268,50 +253,67 @@ def compute_average_precision():
 
     # Select detections only for frames we have ground truth
     mask = np.zeros(detections.shape[0], dtype=np.bool)
-    for frame_number in ground_truth[:, 0]:
+    frame_numbers = np.unique(ground_truth[:, 0])
+    for frame_number in frame_numbers:
         mask |= detections[:, 0] == frame_number
 
     detections = detections[mask]
 
-    # pr_table = load_precomputed_precision_recall_data()
-    pr_table = compute_mean_precision_recall(
-        detections=detections,
-        ground_truth=ground_truth,
-    )
+    # Computes AP for every frame
+    ap_per_frame = np.empty((0, 2))
+    for frame_number in frame_numbers:
+        det = detections[detections[:, 0] == frame_number]
+        gt = ground_truth[ground_truth[:, 0] == frame_number]
 
-    # Interpolate data and retrieve Precision for Recall = {0., 0.1, ... 1.0}
-    pr_table = pr_table[pr_table[:, 1].argsort()]
+        # For each confidence value
+        # Gets precision and recall for a frame considering IoU >= 0.5 TP
+        confidences = np.unique(det[:, 5])
+        confidences.sort()
+        prs = np.empty((0, 2))
+        for confidence in confidences:
+            # Gets detection/s with higher confidence score than a threshold
+            det_with_confidence_level = det[det[:, 5] >= confidence, :]
 
-    interpol = np.interp(
-        x=np.linspace(0., 1.0, 11),
-        xp=pr_table[:, 1],
-        fp=pr_table[:, 0],
-    )
+            det_bboxes = det_with_confidence_level[:, 1:5]
+            gt_bboxes = gt[:, 2:6]
+            pr = mean_ap.get_precision_recall(det=det_bboxes,
+                                              gt=gt_bboxes,
+                                              threshold=iou_threshold)
+            prs = np.vstack((prs, pr))
 
-    AP = interpol.mean()
+        # print(f'Precision/Recall table:\n{prs}')
+        # Interpolate p(r) for given r
+        precisions_at_specific_recall = mean_ap.interpolate_precision(prs,
+                                                                      recalls)
+        AP = precisions_at_specific_recall.mean()
 
-    print(
-        f'Table (sorted): precision, recall, confidence\n'
-        f'{pr_table}\n'
-        f'AP is: {AP}'
-    )
+        if verbose:
+            print(f'Frame {frame_number} precision-recall {prs} AP: {AP}')
 
-    # Plot AP and its interpolation
-    plt.subplot(211)
-    plt.plot(pr_table[:, 1], pr_table[:, 0])
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Mean precision as a function of mean recall')
-    plt.axis((0, 1, 0, 1.1))
+        if plot:
+            # Plot AP and its interpolation
+            plt.subplot(211)
+            plt.plot(prs[:, 1], prs[:, 0])
+            plt.xlabel('Recall')
+            plt.ylabel('Precision')
+            plt.title('Mean precision as a function of mean recall')
+            plt.axis((0, 1.1, 0, 1.1))
 
-    plt.subplot(212)
-    plt.plot(np.linspace(0., 1.0, 11), interpol)
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Interpolated')
-    plt.axis((0, 1, 0, 1.1))
+            plt.subplot(212)
+            plt.plot(recalls, precisions_at_specific_recall)
+            plt.xlabel('Recall')
+            plt.ylabel('Precision')
+            plt.title('Interpolated')
+            plt.axis((0, 1.1, 0, 1.1))
 
-    plt.show()
+            plt.show()
+
+        # [frame_num, AP] column-table
+        ap_per_frame = np.vstack((ap_per_frame, (frame_number, AP)))
+
+    mAP = ap_per_frame[:, 1].mean()
+
+    print(f'Detections: {detections_path.stem} --> mAP: {mAP}')
 
 
 """ T1.4 Foreground detection (qualitative) """

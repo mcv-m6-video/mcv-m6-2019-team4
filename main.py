@@ -13,7 +13,7 @@ def run_week1_tasks():
     task1.test_iou_with_noise()
 
     # Task 1.2: mAP
-    task1.compute_average_precision()
+    task1.compute_mAP()
 
     # Task 2.1: IoU over time
     task2.iou_vs_time()
@@ -27,4 +27,4 @@ def run_week1_tasks():
 
 if __name__ == '__main__':
     # run_week1_tasks()
-    task1.compute_average_precision()
+    task1.compute_mAP()
