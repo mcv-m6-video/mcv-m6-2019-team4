@@ -1,11 +1,14 @@
 import cv2
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.use('Agg')
 
 from evaluation import intersection_over_union
 from utils.annotation_parser import annotationsParser
 from utils.detection_gt_extractor import detectionExtractorGT
 from paths import AICITY_DIR
 import numpy as np
+from pathlib import Path
 
 MIN_AREA =100
 MAX_AREA =  500000
@@ -164,7 +167,7 @@ def get_frame_bounding_box(detections, frame):
 
     return frame_detections
 
-def compute_precision_recall(gtExtractor, detections, threshold, method, color_conversion):
+def compute_test(gtExtractor, detections, threshold, method, color_conversion):
 
     IoUvsFrames = []
     TP = 0
@@ -186,8 +189,8 @@ def compute_precision_recall(gtExtractor, detections, threshold, method, color_c
         #        frame_detections.append([detections[j][2], detections[j][3], detections[j][4], detections[j][5]])
 
         BBoxesDetected = []
-
         for x in range(len(frame_gt)):
+
             maxIoU = 0
             BBoxDetected = -1
 
@@ -198,11 +201,11 @@ def compute_precision_recall(gtExtractor, detections, threshold, method, color_c
                     maxIoU = iou
                     BBoxDetected = y
 
-            if maxIoU > threshold:
-                TP = TP + 1
-                BBoxesDetected.append(BBoxDetected)
-            else:
-                FN = FN + 1
+        if maxIoU > threshold:
+            TP = TP + 1
+            BBoxesDetected.append(BBoxDetected)
+        else:
+            FN = FN + 1
 
             IoUvsFrame.append(maxIoU)
 
@@ -228,7 +231,120 @@ def compute_precision_recall(gtExtractor, detections, threshold, method, color_c
     plt.xlabel('Frames')
     plt.title('IoU with method: ' + method + ', and color conversion: ' + str(color_conversion))
     plt.show()
-    plt.savefig('figure_' + method + '_' + str(color_conversion) +'.png')
+    filename = str(Path(__file__).parent.joinpath('figure_' + method + '_' + str(color_conversion) + '.png'))
+
+    #plt.savefig('figure_' + method + '_' + str(color_conversion) +'.png')
+    plt.savefig(filename)
+
+def compute_mAP(precision, recall):
+
+    mAP = 0
+
+    interpol = np.interp(
+        x=np.linspace(0., 1.0, 11),
+        xp=recall,
+        fp=precision,
+    )
+
+    mAP = interpol.mean()
+
+    return mAP
+
+
+def compute_precision_recall (detections_IoU, confidence_indices, FN, threshold, method, color_conversion):
+
+    precision = []
+    recall = []
+
+    #Sort detections_IoU according to confidence indexes
+    detections_IoU = [x for _, x in sorted(zip(confidence_indices, detections_IoU), reverse=True)]
+
+    TP = 0
+    FP = 0
+    for detection in detections_IoU:
+
+        if detection > threshold:
+            TP = TP + 1
+        else:
+            FP = FP + 1
+        pr = TP / (TP + FP)
+
+        if TP + FN == 0:
+            rc= 1
+        else:
+            rc = TP / (TP + FN)
+
+        precision.append(pr)
+        recall.append(rc)
+
+    mAP = compute_mAP(precision, recall)
+
+    plt.figure(2)
+    plt.plot(recall, precision)
+    plt.ylabel('Precision')
+    plt.xlabel('Recall')
+    plt.title('Precision-Recall curve \n' + 'Method: ' + method + ', and color conversion: ' + str(color_conversion) + '\n' + 'mAP = ' + str(mAP))
+    plt.savefig('figure_pr_curve' + method + '_' + str(color_conversion) +'.png')
+    #plt.show()
+
+
+def compute_iou(gtExtractor, detections, threshold, method, color_conversion, frames):
+
+    IoUvsFrames = []
+    detections_IoU = []
+    TP = 0
+    FP = 0
+    FN = 0
+
+    for i in range(frames):
+
+        IoUvsFrame = []
+
+        frame_gt = get_frame_bounding_box(gtExtractor.gt, i)
+
+        frame_detections = get_frame_bounding_box(detections, i)
+
+        gt_detections = []
+
+        for y in range(len(frame_detections)):
+
+            maxIoU = 0
+            gtDetected = -1
+
+            for x in range(len(frame_gt)):
+                iou = intersection_over_union.iou_from_bb(frame_gt[x], frame_detections[y])
+                if iou >= maxIoU:
+                    maxIoU = iou
+                    gtDetected = x
+
+            detections_IoU.append(maxIoU)
+
+            if maxIoU > threshold:
+                TP = TP + 1
+                gt_detections.append(gtDetected)
+            else:
+                FP = FP + 1
+
+            IoUvsFrame.append(maxIoU)
+
+        if not IoUvsFrame:
+            IoUvsFrame = [0]
+
+        IoUvsFrames.append(sum(IoUvsFrame) / len(IoUvsFrame))
+
+        for x in range(len(frame_gt)):
+            if not gt_detections.__contains__(x):
+                FN = FN + 1
+
+    compute_precision_recall(detections_IoU, detections_IoU, FN, threshold, method, color_conversion)
+
+    plt.figure(2)
+    plt.plot(IoUvsFrames)
+    plt.ylabel('IoU')
+    plt.xlabel('Frames')
+    plt.title('IoU with method: ' + method + ', and color conversion: ' + str(color_conversion))
+    plt.savefig('figure_IoU' + method + '_' + str(color_conversion) +'.png')
+    #plt.show()
 
 
 def analyze_sequence(method, color_conversion):
@@ -247,8 +363,9 @@ def analyze_sequence(method, color_conversion):
 
     detections = []
 
-    #for i in range(gtExtractor.getGTNFrames()):
-    for i in range(100):
+    frames =100
+    #frames = gtExtractor.getGTNFrames()
+    for i in range(frames):
         # load the image
         frame_path = AICITY_DIR.joinpath('frames',
                                          'image-{:04d}.png'.format(i + 1))
@@ -272,7 +389,7 @@ def analyze_sequence(method, color_conversion):
         cv2.waitKey(1)
         video.write(image)
 
-    compute_precision_recall(gtExtractor, detections,0.5 ,method, color_conversion)
+    compute_iou(gtExtractor, detections,0.5 ,method, color_conversion, frames)
 
 
 
