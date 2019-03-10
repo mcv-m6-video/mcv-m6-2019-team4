@@ -5,12 +5,9 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 from datasets.aicity_dataset import AICityDataset
-from detections_loader import load_bounding_boxes
 
-from evaluation.intersection_over_union import iou_from_bb
-from mean_ap import get_precision_recall, select_frame
-from utils import randomizer
-from utils.detection_gt_extractor import detectionExtractorGT
+from evaluation import intersection_over_union, mean_ap
+from utils import randomizer, detections_loader, detection_gt_extractor
 from paths import AICITY_DIR, AICITY_ANNOTATIONS
 
 """ T1.1 Detection metrics detection (quantitative) """
@@ -21,7 +18,7 @@ def test_iou_with_synth_data():
     boxA = [0., 0., 10., 10.]
     boxB = [1., 1., 11., 11.]
 
-    result = iou_from_bb(boxA, boxB)
+    result = intersection_over_union.iou_from_bb(boxA, boxB)
     print('Result: {0}\n'
           'Correct Solution: {1}'.format(result, '0.680672268908'))
 
@@ -29,7 +26,7 @@ def test_iou_with_synth_data():
     boxA = [a / 100. for a in boxA]
     boxB = [b / 100. for b in boxB]
 
-    result = iou_from_bb(boxA, boxB)
+    result = intersection_over_union.iou_from_bb(boxA, boxB)
 
     print('Result:  {0}\n'
           'Correct Solution: {1}'.format(result, '0.680672268908'))
@@ -37,7 +34,7 @@ def test_iou_with_synth_data():
     print('Two boxes with no overlap')
     boxA = [0., 0., 10., 10.]
     boxB = [12., 12., 22., 22.]
-    result = iou_from_bb(boxA, boxB)
+    result = intersection_over_union.iou_from_bb(boxA, boxB)
 
     print('Result:  {0}\n'
           'Correct Solution: {1}'.format(result, '0.0'))
@@ -45,7 +42,7 @@ def test_iou_with_synth_data():
     print('Additional example')
     boxA = [0., 0., 2., 2.]
     boxB = [1., 1., 3., 3.]
-    result = iou_from_bb(boxA, boxB)
+    result = intersection_over_union.iou_from_bb(boxA, boxB)
 
     print('Result:  {0}\n'
           'Correct Solution: {1}'.format(result, '0.142857142857'))
@@ -53,7 +50,8 @@ def test_iou_with_synth_data():
 
 def test_iou_with_noise():
     # Read GT from dataset
-    gtExtractor = detectionExtractorGT(AICITY_DIR.joinpath('gt', 'gt.txt'))
+    gtExtractor = detection_gt_extractor.detectionExtractorGT(
+        AICITY_DIR.joinpath('gt', 'gt.txt'))
 
     # parameters to randomize detections
     randomNoiseScale = 100
@@ -88,9 +86,9 @@ def test_iou_with_noise():
             BBoxDetected = -1
 
             for y in range(len(detections)):
-                iou = iou_from_bb.iou_from_bb(gtBBOX,
-                                              detections[
-                                                  y])
+                iou = intersection_over_union.iou_from_bb(gtBBOX,
+                                                          detections[
+                                                              y])
                 if iou >= maxIoU:
                     maxIoU = iou
                     detection = detections[y]
@@ -243,8 +241,8 @@ def compute_confidence_precision_recall(detections: Path, ground_truth):
     # Compute precision as a function of recall [[precision, recall, conf],]
     confidence_precision_recall = np.array([
         (
-            *get_precision_recall(detections, ground_truth,
-                                  th=confidence),
+            *mean_ap.get_precision_recall(detections, ground_truth,
+                                          th=confidence),
             confidence,
         )
         for confidence in np.linspace(0.0, 1.0, 31)
@@ -290,7 +288,7 @@ def compute_average_precision():
     # detections_path = AICITY_DIR.joinpath('det', 'det_ssd512.txt')
     # detections_path = AICITY_DIR.joinpath('det', 'det_yolo3.txt')
 
-    detections = load_bounding_boxes(detections_path)
+    detections = detections_loader.load_bounding_boxes(detections_path)
     ground_truth = AICityDataset(AICITY_DIR, AICITY_ANNOTATIONS).get_labels()
 
     pre_rec_conf = compute_confidence_precision_recall(
