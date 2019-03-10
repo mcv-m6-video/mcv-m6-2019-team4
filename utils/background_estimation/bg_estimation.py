@@ -7,9 +7,10 @@ import os
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, Value
 
-
-SIGMA_THR = 2.5  # number of standard deviations to define the background/foreground threshold
+# Must test this
+SIGMA_THR = 3  # number of standard deviations to define the background/foreground threshold
 RHO = 0.01  # memory constant (to update background)
+ROI = False
 
 # TODO: write a background_estimation class similar to 'background_subtractor.py'
 
@@ -35,24 +36,25 @@ RHO = 0.01  # memory constant (to update background)
 #     return np.sqrt(S / (k - 1)), M
 
 
-class BackgroundModel(object):
+class SingleGaussianBackgroundModel(object):
 
-    def __init__(self, height, width, channels, threshold=SIGMA_THR, rho=RHO):
+    def __init__(self, height, width, channels, threshold=SIGMA_THR, rho=RHO, roi=ROI):
         if channels == 1:
             self.sum = np.zeros((height, width)).astype(np.uint64)
-            self.mean = np.zeros((height, width)).astype(np.uint64)
-            self.std = np.zeros((height, width)).astype(np.float64)
+            self.mean = np.zeros((height, width))
+            self.std = np.zeros((height, width))
 
         elif channels == 3:
             self.sum = np.zeros((height, width, channels)).astype(np.uint64)
-            self.mean = np.zeros((height, width, channels)).astype(np.uint64)
-            self.std = np.zeros((height, width, channels)).astype(np.float64)
+            self.mean = np.zeros((height, width, channels))
+            self.std = np.zeros((height, width, channels))
         else:
             print("FATAL: wrong number of channels, the frame must be either in grayscale or RGB")
             return
 
         self.threshold = threshold
         self.rho = rho
+        self.roi = roi
 
     def running_average(self, curr_frame, mean_old, class_mask):  # class_mask is not really needed (?)
         """
@@ -81,7 +83,7 @@ class BackgroundModel(object):
         # Add current's frame value to accumulator
         self.sum += image
 
-    def estimate_bg_single_gaussian(self, image_file_names, roi_filename):
+    def estimate_bg_single_gaussian(self, image_file_names):
         """
         returns an image with channels:
         #   1: mean image
@@ -89,19 +91,11 @@ class BackgroundModel(object):
         #   3: roi image
 
         :param image_file_names: filenames of the background images
-        :param roi_filename: ROI mask
         :return: tuple composed of the mean, stddev and ROI images
 
         Note: to significantly reduce the memory footprint, we need to loop twice through the frame list:
         Once to compute the mean frame, and the second to compute the stddev image
         """
-        # Not used right now
-        roi_image = cv2.imread(roi_filename, 0)  # Take advantage that the ROI has the same dim. as the sequence frames
-
-        # height, width = roi_image.shape
-        # To avoid overflow, make the accumulator a uint64
-        # sum_image = np.zeros((height, width)).astype(np.uint64)
-        # std_image = np.zeros((height, width)).astype(np.float64)
 
         # 1. Estimate mean image
         for frame_name in image_file_names:
@@ -118,6 +112,8 @@ class BackgroundModel(object):
             curr_frame = cv2.imread(frame_name, 0)
             self.std += np.square(curr_frame - self.mean)
 
+        self.std = np.sqrt(self.std / len(image_file_names))
+
         # 3 dim array with all the frames ==> THIS USES A LOOOT OF MEMORY
         # list_images = [cv2.imread(fp,0) for fp in image_file_names]
         # images = np.dstack(list_images)
@@ -130,7 +126,7 @@ class BackgroundModel(object):
 
         # return gaussian_image
 
-    def bg_segmentation_single_gaussian(self, image_file_name):
+    def bg_segmentation_single_gaussian(self, image_file_name, roi_filename=''):
         """
         Segments the current image into two classes: background ('0's) and foreground ('1's).
         :param image_file_name: path to the frame to segment.
@@ -138,15 +134,29 @@ class BackgroundModel(object):
         :return: an image with black on the background, white on the foreground.
         """
         image = cv2.imread(image_file_name, 0)
+        image = image.astype(np.float64)  # maybe is not necessary
 
         # mean = # bg_estimation[:, :, 0]
         # std = bg_estimation[:, :, 1] * threshold
-        dist = np.abs(self.mean - image)
-        diff = self.std * self.threshold - dist
-        diff[diff < 0] = 255
-        diff[diff != 255] = 0
+        # dist = np.abs(self.mean - image)
+        # diff = self.std * self.threshold - dist
+        # diff[diff < 0] = 255
+        # diff[diff != 255] = 0
 
-        return diff.astype(np.uint8)
+        # Define lower and upper threshold 'images' (mean +/- thr*std)
+        lower_threshold = self.mean - self.std * self.threshold
+        upper_threshold = self.mean + self.std * self.threshold
+
+        detection = ~((image >= lower_threshold) & (image <= upper_threshold))
+
+        # Filter out detection outside ROI (if told so)
+        if self.roi:
+            ROI = cv2.imread(roi_filename, 0).astype(np.uint8)  # not only 0 and 255 but also noisy values
+            ROI = ROI > 255/2  # only True or False (i.e.: 1's or 0's)
+            detection = detection & ROI  # All pixels outside ROI should be background
+            # Only detect if foreground and in ROI
+
+        return 255 * (detection.astype(np.uint8))  # map 0 to 0 and 1 to 255 (as expected for uint8)
 
 
 def rapid_variance(samples):
@@ -156,7 +166,7 @@ def rapid_variance(samples):
     return s0, s1, s2
 
 
-if __name__ == '__main__':  # Consider removing this main() as 'Task 1' is almost identical (+ output to video)
+if __name__ == '__main__':  # move this to task 1
     viz = True
     # Define path to video frames
     filepaths = sorted(glob.glob(os.path.join(AICITY_DIR, 'vdo_frames/image-????.png')))  # change folder name (?)
@@ -172,8 +182,8 @@ if __name__ == '__main__':  # Consider removing this main() as 'Task 1' is almos
     channels = 1
 
     # Define background model
-    bg_model = BackgroundModel(height, width, channels, SIGMA_THR, RHO)
-    bg_model.estimate_bg_single_gaussian(back_list, roi_path)  # MUST speed this up, it takes more than a minute
+    bg_model = SingleGaussianBackgroundModel(height, width, channels, SIGMA_THR, RHO, ROI)
+    bg_model.estimate_bg_single_gaussian(back_list)  # MUST speed this up, it takes more than a minute
 
     if viz:
         plt.figure()
@@ -184,14 +194,15 @@ if __name__ == '__main__':  # Consider removing this main() as 'Task 1' is almos
     fore_list = filepaths[num_backFrames:]
 
     # Define video writer
-    video_name = 'background_estimation_single_gaussian_f.avi'
+    video_name = 'background_estimation_single_gaussian_f_ROI_off.avi'
     video = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc('X', 'V', 'I', 'D'), 10, (width, height))
 
     for frame in fore_list:
         print("Estimating frame: '{0}'".format(frame))
-        segm = bg_model.bg_segmentation_single_gaussian(frame)
+        segm = bg_model.bg_segmentation_single_gaussian(frame, roi_filename=roi_path)
         image = cv2.cvtColor(segm, cv2.COLOR_GRAY2BGR)
         video.write(image)
+
 
 
 
