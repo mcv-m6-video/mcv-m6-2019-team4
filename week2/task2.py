@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 
-def bg_segmentation_single_gaussian(video_name, preproc = False, postproc = False):
+def bg_segmentation_single_gaussian_adaptive(video_name, preproc = False, postproc = False):
     viz = True
     # Define path to video frames
     filepaths = sorted(glob.glob(os.path.join(str(AICITY_DIR), 'vdo_frames/image-????.png')))  # change folder name (?)
@@ -27,11 +27,11 @@ def bg_segmentation_single_gaussian(video_name, preproc = False, postproc = Fals
     ROI = True
     PREPROC = preproc  # True
     POSTPROC = postproc  # True
-    METHOD = 'non_adaptive'
+    METHOD = 'adaptive'  # adaptive w. a single gaussian (e.g.: the background CAN be updated)
 
     bg_model = bg_estimation.SingleGaussianBackgroundModel(first_frame.shape, SIGMA_THR, RHO, ROI, POSTPROC, METHOD)
 
-    print("Estimating background with first {0}% of frames".format(percent_back))
+    print("Estimating background with first '{0}'% of frames".format(percent_back))
     bg_model.estimate_bg_single_gaussian(back_list)  # MUST speed this up, it takes more than a minute
 
     if viz:
@@ -83,11 +83,10 @@ if __name__ == "__main__":
     # Note: ROI always in use (not so noticeable anyway with the exception of critical cases)
 
     # Customise at will (examples below):
-    method = 'non_adaptive'
     preproc = True
     postproc = True
     video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc, postproc)
-    bg_segmentation_single_gaussian(video_name, preproc, postproc)
+    bg_segmentation_single_gaussian_adaptive(video_name, preproc, postproc)
 
     # 1st: single gaussian, non adaptive, with ROI and NO post-processing
     # method = 'non-adaptive'

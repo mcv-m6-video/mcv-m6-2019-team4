@@ -265,7 +265,7 @@ if __name__ == '__main__':  # move this to task 1
     # Define background model
     bg_model = SingleGaussianBackgroundModel(first_frame.shape, SIGMA_THR, RHO, ROI, PREPROC, POSTPROC, METHOD)
 
-    print("Estimating background with first '{0}'% of frames".format(percent_back))
+    print("Estimating background with first {0}% of frames".format(percent_back))
     bg_model.estimate_bg_single_gaussian(back_list)  # MUST speed this up, it takes more than a minute
 
     if viz:
