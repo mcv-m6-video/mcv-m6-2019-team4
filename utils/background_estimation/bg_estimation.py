@@ -8,10 +8,11 @@ import matplotlib.pyplot as plt
 from multiprocessing import Pool, Value
 
 # Must test this
-SIGMA_THR = 3  # number of standard deviations to define the background/foreground threshold
-RHO = 0.01  # memory constant (to update background)
-ROI = False
-POSTPROC = True
+SIGMA_THR = 2.5  # number of standard deviations to define the background/foreground threshold
+RHO = 0.01  # memory constant (to update background). The more static the background, the smaller this should be
+ROI = True  # Use ROI
+POSTPROC = True  # Morphological filtering to improve output detection
+PREPROC = True  # Denoise input frame with median + gaussian filters
 METHOD = 'adaptive'  # adaptive w. a single gaussian (e.g.: the background CAN be updated)
 
 
@@ -42,10 +43,11 @@ METHOD = 'adaptive'  # adaptive w. a single gaussian (e.g.: the background CAN b
 #     s2 = sum(x * x for x in samples)
 #     return s0, s1, s2
 
-
+# TODO: speed-up estimation of background model (two for loops...+ (pre-processing on each))
 class SingleGaussianBackgroundModel(object):
 
-    def __init__(self, im_shape, threshold=SIGMA_THR, rho=RHO, roi=ROI, post_process=True, method='adaptive'):
+    def __init__(self, im_shape, threshold=SIGMA_THR, rho=RHO, roi=ROI, pre_process=False, post_process=True,
+                 method='adaptive'):
         if len(im_shape) == 2 or (len(im_shape) == 3 and im_shape[-1] == 3):
             self.sum = np.zeros(im_shape).astype(np.uint64)
             self.mean = np.zeros(im_shape)
@@ -59,6 +61,7 @@ class SingleGaussianBackgroundModel(object):
         self.rho = rho
         self.roi = roi
         self.shape = im_shape
+        self.pre_process = pre_process
         self.post_process = post_process
         self.method = method
 
@@ -112,6 +115,8 @@ class SingleGaussianBackgroundModel(object):
         for frame_name in image_file_names:
             # Read frame
             curr_frame = cv2.imread(frame_name, 0)
+            if self.pre_process:
+                curr_frame = denoise_frame(curr_frame)
             # Accumulate image
             self.update_cumulative_frame(curr_frame)
 
@@ -121,6 +126,8 @@ class SingleGaussianBackgroundModel(object):
         for frame_name in image_file_names:
             # Read frame
             curr_frame = cv2.imread(frame_name, 0)
+            if self.pre_process:
+                curr_frame = denoise_frame(curr_frame)
             self.var += np.square(curr_frame - self.mean)
 
         self.var = self.var / (len(image_file_names) - 1)  # forgot about the -1
@@ -144,6 +151,9 @@ class SingleGaussianBackgroundModel(object):
         :param: roi_filename: path to ROI (if available)
         :return: an image with black on the background, white on the foreground.
         """
+        if self.pre_process:
+            image = denoise_frame(image)
+
         image = image.astype(np.float64)  # maybe is not necessary
 
         # Define lower and upper threshold 'images' (mean +/- thr*std)
@@ -165,6 +175,9 @@ class SingleGaussianBackgroundModel(object):
         if self.post_process:  # try different combinations
             detection = apply_morphological_filters(detection)
             detection = hole_filling(detection)
+            # Remove small isolated pixel clusters merged accidentally by hole filling
+            SE = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4, 4))
+            detection = cv2.morphologyEx(detection, cv2.MORPH_OPEN, SE)
 
         if self.method == 'adaptive':  # and np.sum(detection < 255) > 0 , that is, there is background
             # Update variance and mean for pixels classified as background
@@ -222,6 +235,20 @@ def hole_filling(image):
     return im_out
 
 
+def denoise_frame(frame):
+    """
+    Apply a median + (gaussian) filter to the input frame to reduce noise
+    :param frame:
+    :return:
+    """
+    kernel_m = 3
+    kernel_g = (5, 5)
+    im_median = cv2.medianBlur(frame, kernel_m)
+    im_out = cv2.GaussianBlur(im_median, kernel_g, 0)
+
+    return im_out
+
+
 if __name__ == '__main__':  # move this to task 1
     viz = True
     # Define path to video frames
@@ -236,7 +263,7 @@ if __name__ == '__main__':  # move this to task 1
     first_frame = cv2.imread(back_list[0], 0)
 
     # Define background model
-    bg_model = SingleGaussianBackgroundModel(first_frame.shape, SIGMA_THR, RHO, ROI, POSTPROC, METHOD)
+    bg_model = SingleGaussianBackgroundModel(first_frame.shape, SIGMA_THR, RHO, ROI, PREPROC, POSTPROC, METHOD)
 
     print("Estimating background with first '{0}'% of frames".format(percent_back))
     bg_model.estimate_bg_single_gaussian(back_list)  # MUST speed this up, it takes more than a minute

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 
-def bg_segmentation_single_gaussian(video_name, method, postproc):
+def bg_segmentation_single_gaussian(video_name, method, preproc, postproc):
     viz = True
     # Define path to video frames
     filepaths = sorted(glob.glob(os.path.join(str(AICITY_DIR), 'vdo_frames/image-????.png')))  # change folder name (?)
@@ -25,7 +25,8 @@ def bg_segmentation_single_gaussian(video_name, method, postproc):
     SIGMA_THR = 3  # number of standard deviations to define the background/foreground threshold
     RHO = 0.01  # memory constant (to update background) ==> exaggerated to debug
     ROI = True
-    POSTPROC = postproc # True
+    PREPROC = preproc  # True
+    POSTPROC = postproc  # True
     METHOD = method  #'adaptive'  # adaptive w. a single gaussian (e.g.: the background CAN be updated)
 
     bg_model = bg_estimation.SingleGaussianBackgroundModel(first_frame.shape, SIGMA_THR, RHO, ROI, POSTPROC, METHOD)
@@ -54,23 +55,23 @@ def bg_segmentation_single_gaussian(video_name, method, postproc):
     video_name = "{0}_rho-{1}_sigma_{2}.avi".format(video_name, RHO, SIGMA_THR)
     four_cc = cv2.VideoWriter_fourcc(*'XVID')
     video = cv2.VideoWriter(video_name, four_cc, 10, (width, height))
-    mean_video_name = "{0}_mean.avi".format(video_name.replace('.avi', ''))
-    mean_video = cv2.VideoWriter(mean_video_name, four_cc, 10, (width, height))
-    var_video_name = "{0}_var.avi".format(video_name.replace('.avi', ''))
-    var_video = cv2.VideoWriter(var_video_name, four_cc, 10, (width, height))
+    # mean_video_name = "{0}_mean.avi".format(video_name.replace('.avi', ''))
+    # mean_video = cv2.VideoWriter(mean_video_name, four_cc, 10, (width, height))
+    # var_video_name = "{0}_var.avi".format(video_name.replace('.avi', ''))
+    # var_video = cv2.VideoWriter(var_video_name, four_cc, 10, (width, height))
 
     for frame in fore_list:
         print("Segmenting FG/BG frame: {0}".format(frame))
         segm = bg_model.apply(cv2.imread(frame, 0), roi_filename=roi_path)
         image = cv2.cvtColor(segm, cv2.COLOR_GRAY2BGR)
-        print("Mean image range: ({0:.2f}, {1:.2f})\nvar image range: ({2:.2f}, {3:.2f})".format(
-            np.min(bg_model.mean), np.max(bg_model.mean), np.min(bg_model.var), np.max(bg_model.var)))
-        print("Mean image has mean: {0:.2f}\nvar image has mean: {1:.2f}".format(
-            np.mean(bg_model.mean), np.mean(bg_model.var)))
-        mean_back = cv2.cvtColor(bg_model.mean.astype(np.uint8), cv2.COLOR_GRAY2BGR)
-        var_back = cv2.cvtColor(bg_model.mean.astype(np.uint8), cv2.COLOR_GRAY2BGR)
-        mean_video.write(mean_back)
-        var_video.write(var_back)
+        # print("Mean image range: ({0:.2f}, {1:.2f})\nvar image range: ({2:.2f}, {3:.2f})".format(
+        #     np.min(bg_model.mean), np.max(bg_model.mean), np.min(bg_model.var), np.max(bg_model.var)))
+        # print("Mean image has mean: {0:.2f}\nvar image has mean: {1:.2f}".format(
+        #     np.mean(bg_model.mean), np.mean(bg_model.var)))
+        # mean_back = cv2.cvtColor(bg_model.mean.astype(np.uint8), cv2.COLOR_GRAY2BGR)
+        # var_back = cv2.cvtColor(bg_model.mean.astype(np.uint8), cv2.COLOR_GRAY2BGR)
+        # mean_video.write(mean_back)
+        # var_video.write(var_back)
         video.write(image)
 
     print("Video '{0}' was successfully generated".format(video_name))
@@ -81,28 +82,39 @@ if __name__ == "__main__":
     # Edit to match your needs (naming schemes)
     # Note: ROI always in use (not so noticeable anyway with the exception of critical cases)
 
+    # Customise at will (examples below):
+    method = 'adaptive'
+    preproc = True
+    postproc = True
+    video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc, postproc)
+    bg_segmentation_single_gaussian(video_name, method, preproc, postproc)
+
     # 1st: single gaussian, non adaptive, with ROI and NO post-processing
-    method = 'non-adaptive'
-    postproc = False
-    video_name = "BE_1gauss-{0}_post-{1}".format(method, postproc)
-    bg_segmentation_single_gaussian(video_name, method, postproc)
-
-    # 2nd single gaussian, not adaptive, with ROI and post-processing (w.morphological filters)
-    method = 'single'
-    postproc = True
-    video_name = "BE_1gauss-{0}_post-{1}".format(method, postproc)
-    bg_segmentation_single_gaussian(video_name, method, postproc)
-
-    # 3rd: single gaussian, adaptive, with ROI and NO post-processing
-    method = 'adaptive'
-    postproc = False
-    video_name = "BE_1gauss-{0}_post-{1}".format(method, postproc)
-    bg_segmentation_single_gaussian(video_name, method, postproc)
-
-    # 4th: single gaussian, adaptive, with ROI and post-processing (w.morphological filters)
-    method = 'adaptive'
-    postproc = True
-    video_name = "BE_1gauss-{0}_post-{1}".format(method, postproc)
-    bg_segmentation_single_gaussian(video_name, method, postproc)
+    # method = 'non-adaptive'
+    # preproc = True
+    # postproc = False
+    # video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc, postproc)
+    # bg_segmentation_single_gaussian(video_name, method, preproc, postproc)
+    #
+    # # 2nd single gaussian, not adaptive, with ROI and post-processing (w.morphological filters)
+    # method = 'non-adaptive'
+    # preproc = True
+    # postproc = True
+    # video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc, postproc)
+    # bg_segmentation_single_gaussian(video_name, method, preproc, postproc)
+    #
+    # # 3rd: single gaussian, adaptive, with ROI and NO post-processing
+    # method = 'adaptive'
+    # preproc = True
+    # postproc = False
+    # video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc, postproc)
+    # bg_segmentation_single_gaussian(video_name, method, preproc, postproc)
+    #
+    # # 4th: single gaussian, adaptive, with ROI and post-processing (w.morphological filters)
+    # method = 'adaptive'
+    # preproc = True
+    # postproc = True
+    # video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc, postproc)
+    # bg_segmentation_single_gaussian(video_name, method, preproc, postproc)
 
 
