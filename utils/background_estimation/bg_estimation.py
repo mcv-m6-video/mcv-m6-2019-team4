@@ -11,8 +11,9 @@ from multiprocessing import Pool, Value
 SIGMA_THR = 3  # number of standard deviations to define the background/foreground threshold
 RHO = 0.01  # memory constant (to update background)
 ROI = False
+POSTPROC = True
+METHOD = 'adaptive'  # adaptive w. a single gaussian (e.g.: the background CAN be updated)
 
-# TODO: write a background_estimation class similar to 'background_subtractor.py'
 
 # winStd is a quick way to compute std of an image
 # std_mean_welford works very well w. sequences but I cannot manage to get it to match w. images
@@ -35,19 +36,21 @@ ROI = False
 #
 #     return np.sqrt(S / (k - 1)), M
 
+# def rapid_variance(samples):  # to remove
+#     s0 = sum(1 for x in samples)
+#     s1 = sum(x for x in samples)
+#     s2 = sum(x * x for x in samples)
+#     return s0, s1, s2
+
 
 class SingleGaussianBackgroundModel(object):
 
-    def __init__(self, height, width, channels, threshold=SIGMA_THR, rho=RHO, roi=ROI):
-        if channels == 1:
-            self.sum = np.zeros((height, width)).astype(np.uint64)
-            self.mean = np.zeros((height, width))
-            self.std = np.zeros((height, width))
+    def __init__(self, im_shape, threshold=SIGMA_THR, rho=RHO, roi=ROI, post_process=True, method='adaptive'):
+        if len(im_shape) == 2 or (len(im_shape) == 3 and im_shape[-1] == 3):
+            self.sum = np.zeros(im_shape).astype(np.uint64)
+            self.mean = np.zeros(im_shape)
+            self.var = np.zeros(im_shape)
 
-        elif channels == 3:
-            self.sum = np.zeros((height, width, channels)).astype(np.uint64)
-            self.mean = np.zeros((height, width, channels))
-            self.std = np.zeros((height, width, channels))
         else:
             print("FATAL: wrong number of channels, the frame must be either in grayscale or RGB")
             return
@@ -55,29 +58,37 @@ class SingleGaussianBackgroundModel(object):
         self.threshold = threshold
         self.rho = rho
         self.roi = roi
+        self.shape = im_shape
+        self.post_process = post_process
+        self.method = method
 
-    def running_average(self, curr_frame, mean_old, class_mask):  # class_mask is not really needed (?)
+    def running_average(self, curr_frame, detection):  # class_mask is not really needed (?)
         """
         Updates the mean value of the background image
         :param curr_frame:
-        :param mean_old:
-        :param class_mask: mask that indicates which pixels should be updated (those on the background)
+        :param detection: foreground detection of current frame
         :return:
         """
-        mean_new = (1 - self.rho) * mean_old + self.rho * curr_frame   # update only background
-        return mean_new
+        back = detection != 255  # mask for background pixels
+        # replicate the mask across channels (if channels > 1)
+        if len(self.shape) == 3 and self.shape[-1] > 1:
+            back = np.repeat(back[:, :, np.newaxis], self.shape[-1], axis=2)
 
-    def running_variance(self, curr_frame, var_old, new_mean, class_mask):
+        self.mean[back] = (1 - self.rho) * self.mean[back] + self.rho * curr_frame[back]   # update only background
+
+    def running_variance(self, curr_frame, detection):
         """
         Updates the variance value of the background image
         :param curr_frame:
-        :param var_old:
-        :param class_mask: mask that indicates which pixels should be updated (those on the background)
+        :param detection: foreground detection of current frame
         :return:
         """
-        # We compute stddev, we should add a square
-        var_new = (1 - self.rho) * var_old + self.rho * np.square(curr_frame - new_mean)
-        return var_new
+        back = detection != 255  # mask for background pixels
+        # replicate the mask across channels (if channels > 1)
+        if self.shape[-1] > 1:
+            back = np.repeat(back[:, :, np.newaxis], self.shape[-1], axis=2)
+
+        self.var[back] = (1 - self.rho) * self.var[back] + self.rho * np.square(curr_frame[back] - self.mean[back])
 
     def update_cumulative_frame(self, image):
         # Add current's frame value to accumulator
@@ -110,9 +121,9 @@ class SingleGaussianBackgroundModel(object):
         for frame_name in image_file_names:
             # Read frame
             curr_frame = cv2.imread(frame_name, 0)
-            self.std += np.square(curr_frame - self.mean)
+            self.var += np.square(curr_frame - self.mean)
 
-        self.std = np.sqrt(self.std / len(image_file_names))
+        self.var = self.var / (len(image_file_names) - 1)  # forgot about the -1
 
         # 3 dim array with all the frames ==> THIS USES A LOOOT OF MEMORY
         # list_images = [cv2.imread(fp,0) for fp in image_file_names]
@@ -129,40 +140,86 @@ class SingleGaussianBackgroundModel(object):
     def apply(self, image, roi_filename=''):
         """
         Segments the current image into two classes: background ('0's) and foreground ('1's).
-        :param image_file_name: path to the frame to segment.
-        :param bg_estimation: background estimation model.
+        :param: image: input image to segment
+        :param: roi_filename: path to ROI (if available)
         :return: an image with black on the background, white on the foreground.
         """
         image = image.astype(np.float64)  # maybe is not necessary
 
-        # mean = # bg_estimation[:, :, 0]
-        # std = bg_estimation[:, :, 1] * threshold
-        # dist = np.abs(self.mean - image)
-        # diff = self.std * self.threshold - dist
-        # diff[diff < 0] = 255
-        # diff[diff != 255] = 0
-
         # Define lower and upper threshold 'images' (mean +/- thr*std)
-        lower_threshold = self.mean - self.std * self.threshold
-        upper_threshold = self.mean + self.std * self.threshold
+        # Note: for adaptive, we use variance for the running update (just add sqrt here)
+        lower_threshold = self.mean - np.sqrt(self.var) * self.threshold
+        upper_threshold = self.mean + np.sqrt(self.var) * self.threshold
 
         detection = ~((image >= lower_threshold) & (image <= upper_threshold))
 
         # Filter out detection outside ROI (if told so)
-        if self.roi:
+        if self.roi and roi_filename:  # ROI and non-empty path
             ROI = cv2.imread(roi_filename, 0).astype(np.uint8)  # not only 0 and 255 but also noisy values
             ROI = ROI > 255/2  # only True or False (i.e.: 1's or 0's)
             detection = detection & ROI  # All pixels outside ROI should be background
             # Only detect if foreground and in ROI
+        detection = 255 * (detection.astype(np.uint8))  # map (0,1) to (0,255) as expected for uint8
 
-        return 255 * (detection.astype(np.uint8))  # map 0 to 0 and 1 to 255 (as expected for uint8)
+        # Apply morphological filtering (see 'morphological_filtering')
+        if self.post_process:  # try different combinations
+            detection = apply_morphological_filters(detection)
+            detection = hole_filling(detection)
+
+        if self.method == 'adaptive':
+            # Update variance and mean for pixels classified as background
+            self.running_average(image, detection)
+            self.running_variance(image, detection)
+
+        return detection
 
 
-def rapid_variance(samples):
-    s0 = sum(1 for x in samples)
-    s1 = sum(x for x in samples)
-    s2 = sum(x * x for x in samples)
-    return s0, s1, s2
+def apply_morphological_filters(image):
+    # Threshold
+    # Set values
+    thr = 130
+    max_val = 255
+    ret, im_th = cv2.threshold(image, thr, max_val, cv2.THRESH_BINARY)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4, 4))
+    im_open = cv2.morphologyEx(im_th, cv2.MORPH_OPEN, kernel)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 10))
+    im_out = cv2.morphologyEx(im_open, cv2.MORPH_CLOSE, kernel)
+
+    return im_out
+
+
+# from: https://www.learnopencv.com/filling-holes-in-an-image-using-opencv-python-c/
+def hole_filling(image):
+    """
+    Start at (0,0) and fill background and then invert selection
+    :param image:
+    :return:
+    """
+    thr = 220
+    max_val = 255
+    # Threshold (inverted)
+    # Set values equal to or above 220 to 0
+    # Set values below 220 to 255
+    th, im_th = cv2.threshold(image, thr, max_val, cv2.THRESH_BINARY)  # the other way around!
+
+    # Copy the thresholded image
+    im_floodfill = im_th.copy()
+
+    # Mask used to flood filling
+    # Notice that we need extra rows and columns (2, 2)
+    h, w = im_th.shape[:2]
+    mask = np.zeros((h + 2, w + 2), np.uint8)
+
+    # Floodfill from point (0,0): assumed to be background
+    cv2.floodFill(im_floodfill, mask, (0, 0), max_val)
+
+    # Invert floodfilled image
+    im_floodfill_inv = cv2.bitwise_not(im_floodfill)
+
+    # Combine the two images to get the foreground
+    im_out = im_th | im_floodfill_inv
+
+    return im_out
 
 
 if __name__ == '__main__':  # move this to task 1
@@ -177,11 +234,11 @@ if __name__ == '__main__':  # move this to task 1
     back_list = filepaths[:num_backFrames]
 
     first_frame = cv2.imread(back_list[0], 0)
-    height, width = first_frame.shape
-    channels = 1
 
     # Define background model
-    bg_model = SingleGaussianBackgroundModel(height, width, channels, SIGMA_THR, RHO, ROI)
+    bg_model = SingleGaussianBackgroundModel(first_frame.shape, SIGMA_THR, RHO, ROI, POSTPROC, METHOD)
+
+    print("Estimating background with first '{0}'% of frames".format(percent_back))
     bg_model.estimate_bg_single_gaussian(back_list)  # MUST speed this up, it takes more than a minute
 
     if viz:
@@ -189,21 +246,15 @@ if __name__ == '__main__':  # move this to task 1
         plt.imshow(bg_model.mean, cmap='gray')
         plt.show()
 
-    # Detect foregound (rest of the sequence)
+    # Detect foreground (rest of the sequence)
     fore_list = filepaths[num_backFrames:]
 
     # Define video writer
     video_name = 'background_estimation_single_gaussian_f_ROI_off.avi'
-    video = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc('X', 'V', 'I', 'D'), 10, (width, height))
+    video = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc('X', 'V', 'I', 'D'), 10, first_frame.shape)
 
     for frame in fore_list:
         print("Estimating frame: '{0}'".format(frame))
-        segm = bg_model.bg_segmentation_single_gaussian(frame, roi_filename=roi_path)
+        segm = bg_model.apply(frame, roi_filename=roi_path)
         image = cv2.cvtColor(segm, cv2.COLOR_GRAY2BGR)
         video.write(image)
-
-
-
-
-
-

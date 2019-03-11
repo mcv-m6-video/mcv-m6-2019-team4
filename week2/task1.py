@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from paths import AICITY_DIR
 import glob
-import math
 import os
 import numpy as np
 from utils.background_estimation import bg_estimation
@@ -9,7 +8,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 
-def bg_segmentation_single_gaussian():
+def bg_segmentation_single_gaussian(video_name, method, postproc):
     viz = True
     # Define path to video frames
     filepaths = sorted(glob.glob(os.path.join(str(AICITY_DIR), 'vdo_frames/image-????.png')))  # change folder name (?)
@@ -21,15 +20,15 @@ def bg_segmentation_single_gaussian():
     back_list = filepaths[:num_backFrames]
 
     first_frame = cv2.imread(back_list[0], 0)
-    height, width = first_frame.shape
-    channels = 1
 
     # Define background model
     SIGMA_THR = 3  # number of standard deviations to define the background/foreground threshold
     RHO = 0.01  # memory constant (to update background)
-    ROI = False
+    ROI = True
+    POSTPROC = postproc # True
+    METHOD = method  #'adaptive'  # adaptive w. a single gaussian (e.g.: the background CAN be updated)
 
-    bg_model = bg_estimation.SingleGaussianBackgroundModel(height, width, channels, SIGMA_THR, RHO, ROI)
+    bg_model = bg_estimation.SingleGaussianBackgroundModel(first_frame.shape, SIGMA_THR, RHO, ROI, POSTPROC, METHOD)
 
     print("Estimating background with first '{0}'% of frames".format(percent_back))
     bg_model.estimate_bg_single_gaussian(back_list)  # MUST speed this up, it takes more than a minute
@@ -39,17 +38,58 @@ def bg_segmentation_single_gaussian():
         plt.imshow(bg_model.mean, cmap='gray')
         plt.show()
 
-    # Detect foregound (rest of the sequence)
+    # Detect foreground (rest of the sequence)
     fore_list = filepaths[num_backFrames:]
 
+    if len(first_frame.shape) == 2:
+        height, width = first_frame.shape
+
+    elif len(first_frame.shape) == 3 and first_frame.shape[-1] == 3:
+        height, width, _ = first_frame.shape
+    else:
+        print("FATAL: unexpected number of channels: must be '1' for grayscale, '3' for RGB")
+
     # Define video writer
-    video_name = 'background_estimation_single_gaussian_f_ROI_off.avi'
-    video = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc('X', 'V', 'I', 'D'), 10, (width, height))
+    # video_name = 'background_estimation_single_adaptive_f_ROI_off.avi'
+    four_cc = cv2.VideoWriter_fourcc(*'XVID')
+    video = cv2.VideoWriter(video_name, four_cc, 10, (width, height))
 
     for frame in fore_list:
         print("Segmenting FG/BG frame: {0}".format(frame))
-        segm = bg_model.apply( cv2.imread(frame,0), roi_filename=roi_path)
+        segm = bg_model.apply(cv2.imread(frame, 0), roi_filename=roi_path)
         image = cv2.cvtColor(segm, cv2.COLOR_GRAY2BGR)
         video.write(image)
 
-    print("Video", video_name, "generated")
+    print("Video '{0}' was successfully generated".format(video_name))
+
+
+if __name__ == "__main__":
+    # Run background subtraction, combinations tested:
+    # Edit to match your needs (naming schemes)
+    # Note: ROI always in use (not so noticeable anyway with the exception of critical cases)
+
+    # 1st: single gaussian, non adaptive, with ROI and NO post-processing
+    # method = 'non-adaptive'
+    # postproc = False
+    # video_name = "BE_1gauss-{0}_post-{1}.avi".format(method, postproc)
+    # bg_segmentation_single_gaussian(video_name, method, postproc)
+
+    # 2nd single gaussian, not adaptive, with ROI and post-processing (w.morphological filters)
+    # method = 'single'
+    # postproc = True
+    # video_name = "BE_1gauss-{0}_post-{1}.avi".format(method, postproc)
+    # bg_segmentation_single_gaussian(video_name, method, postproc)
+
+    # 3rd: single gaussian, adaptive, with ROI and NO post-processing
+    method = 'adaptive'
+    postproc = False
+    video_name = "BE_1gauss-{0}_post-{1}.avi".format(method, postproc)
+    bg_segmentation_single_gaussian(video_name, method, postproc)
+
+    # 4th: single gaussian, adaptive, with ROI and post-processing (w.morphological filters)
+    method = 'adaptive'
+    postproc = True
+    video_name = "BE_1gauss-{0}_post-{1}.avi".format(method, postproc)
+    bg_segmentation_single_gaussian(video_name, method, postproc)
+
+
