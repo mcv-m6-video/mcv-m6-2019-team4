@@ -85,7 +85,7 @@ class SingleGaussianBackgroundModel(object):
         """
         back = detection != 255  # mask for background pixels
         # replicate the mask across channels (if channels > 1)
-        if self.shape[-1] > 1:
+        if len(self.shape) == 3 and self.shape[-1] > 1:
             back = np.repeat(back[:, :, np.newaxis], self.shape[-1], axis=2)
 
         self.var[back] = (1 - self.rho) * self.var[back] + self.rho * np.square(curr_frame[back] - self.mean[back])
@@ -166,7 +166,7 @@ class SingleGaussianBackgroundModel(object):
             detection = apply_morphological_filters(detection)
             detection = hole_filling(detection)
 
-        if self.method == 'adaptive':
+        if self.method == 'adaptive':  # and np.sum(detection < 255) > 0 , that is, there is background
             # Update variance and mean for pixels classified as background
             self.running_average(image, detection)
             self.running_variance(image, detection)
