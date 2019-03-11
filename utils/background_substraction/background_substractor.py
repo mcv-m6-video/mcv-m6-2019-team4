@@ -32,9 +32,9 @@ class background_substractor():
         elif method == 'KNN':
             self.backSub = cv2.createBackgroundSubtractorKNN()
         elif method == 'GSOC':
-            self.backSub = cv2.createBackgroundSubtractorGSOC()
+            self.backSub = cv2.bgsegm.createBackgroundSubtractorGSOC()
         elif method == 'CNT':
-            self.backSub = cv2.createBackgroundSubtractorCNT()
+            self.backSub = cv2.bgsegm.createBackgroundSubtractorCNT()
         elif method == 'Team4-Gaussian':
             #Our own implementatiom
             self.backSub = cv2.createBackgroundSubtractorCNT()
@@ -354,10 +354,10 @@ def analyze_sequence(method, color_conversion):
 
 
     video_name = 'video_' + method + '_' + str(color_conversion) +'.avi'
-    video = cv2.VideoWriter(video_name,
-                            cv2.VideoWriter_fourcc('M', 'P', '4', 'S'), 20,
-                            #cv2.VideoWriter_fourcc('H', '2', '6', '4'), 10,
-                            (1920, 1080))
+    #video = cv2.VideoWriter(video_name,
+    #                        cv2.VideoWriter_fourcc('M', 'P', '4', 'S'), 20,
+    #                        #cv2.VideoWriter_fourcc('H', '2', '6', '4'), 10,
+    #                       (1920, 1080))
 
     detections = []
 
@@ -385,7 +385,7 @@ def analyze_sequence(method, color_conversion):
         #show the output image
         cv2.imshow("Image", image)
         cv2.waitKey(1)
-        video.write(image)
+        #video.write(image)
 
     compute_iou(gtExtractor, detections,0.5 ,method, color_conversion, frames)
 
@@ -398,12 +398,12 @@ def run():
     methods =[
         'MOG2',
         'LSBP',
-        #'GMG',
-        #'GSOC',
-        #'CNT',
-        #'MOG',
-        #'Team4-Gaussian',
-        #'Team4-Adaptative'
+        'GMG',
+        'GSOC',
+        'CNT',
+        'MOG',
+        'Team4-Gaussian',
+        'Team4-Adaptative'
     ]
 
 
