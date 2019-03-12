@@ -9,6 +9,7 @@ from utils.detection_gt_extractor import detectionExtractorGT
 from paths import AICITY_DIR
 import numpy as np
 from pathlib import Path
+from utils.background_estimation import bg_estimation
 
 MIN_AREA =100
 MAX_AREA =  500000
@@ -20,7 +21,7 @@ class background_substractor():
 
     """
 
-    def __init__(self, method):
+    def __init__(self, method, sigma_thr = 3, rho = 0.01 ):
 
         self.method = method
         if method == 'MOG2':
@@ -37,10 +38,22 @@ class background_substractor():
             self.backSub = cv2.bgsegm.createBackgroundSubtractorCNT()
         elif method == 'Team4-Gaussian':
             #Our own implementatiom
-            self.backSub = cv2.createBackgroundSubtractorCNT()
+
+            ROI = False
+            PREPROC = False  # True
+            POSTPROC = False  # True
+            METHOD = 'non_adaptive'
+            self.backSub = bg_estimation.SingleGaussianBackgroundModel((1080,1920,3), sigma_thr, rho, ROI, POSTPROC,
+                                                                   METHOD)
         elif method == 'Team4-Adaptative':
             # Our own implementatiom
-            self.backSub = cv2.createBackgroundSubtractorCNT()
+            ROI = False
+            PREPROC = False  # True
+            POSTPROC = False  # True
+            METHOD = 'adaptive'
+
+            self.backSub = bg_estimation.SingleGaussianBackgroundModel((1080,1920,3), sigma_thr, rho, ROI, POSTPROC,
+                                                                   METHOD)
         else:
             self.backSub = cv2.bgsegm.createBackgroundSubtractorMOG()
 
@@ -342,7 +355,7 @@ def compute_iou(gtExtractor, detections, threshold, method, color_conversion, fr
     #plt.show()
 
 
-def analyze_sequence(method, color_conversion):
+def analyze_sequence(method, color_conversion, sigma_thr = 3, rho = 0.01 ):
 
     """  Analyze the video sequence with a given method and color conversion
     """
@@ -350,7 +363,7 @@ def analyze_sequence(method, color_conversion):
     # Read GT from dataset
     gtExtractor = annotationsParser(AICITY_DIR.joinpath('m6-full_annotation.xml'))
 
-    bckg_subs = background_substractor(method)
+    bckg_subs = background_substractor(method, sigma_thr = sigma_thr, rho = rho )
 
 
     video_name = 'video_' + method + '_' + str(color_conversion) +'.avi'
@@ -393,7 +406,7 @@ def analyze_sequence(method, color_conversion):
 
 def run():
 
-    test = False
+    test = True
 
     methods =[
         'MOG2',
@@ -425,7 +438,7 @@ def run():
                 print ('Analyzing sequence with method: ' + method + ", and color conversion: " + str(color_conversion))
                 analyze_sequence(method,color_conversion)
     else:
-        analyze_sequence('MOG2', None)
+        analyze_sequence('Team4-Gaussian', None,  sigma_thr = 3)
 
 
 
