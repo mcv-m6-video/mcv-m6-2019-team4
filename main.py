@@ -28,7 +28,7 @@ def run_week1_tasks():
 
 def run_week2_tasks():
     # Task 1: Single Gaussian modeling.
-    task1.bg_segmentation_single_gaussian("simple_gaussian")
+    task1.bg_segmentation_single_gaussian("simple_gaussian", alpha=1)
     task1.bg_segmentation_single_gaussian(
         "simple_gaussian_prepostproc",
         preproc=True,
@@ -50,5 +50,5 @@ def run_week2_tasks():
 
 
 if __name__ == '__main__':
-    run_week1_tasks()
+    #run_week1_tasks()
     run_week2_tasks()

@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 import cv2
 
 
-def bg_segmentation_single_gaussian(video_name, preproc = False, postproc = False):
+def bg_segmentation_single_gaussian(video_name, alpha = 3, preproc = False, postproc = False):
     viz = True
     # Define path to video frames
-    filepaths = sorted(glob.glob(os.path.join(str(AICITY_DIR), 'vdo_frames/image-????.png')))  # change folder name (?)
+    filepaths = sorted(glob.glob(os.path.join(str(AICITY_DIR), 'frames/image-????.png')))  # change folder name (?)
     roi_path = os.path.join(str(AICITY_DIR), 'roi.jpg')
     percent_back = 25
     num_frames = len(filepaths)
@@ -22,7 +22,7 @@ def bg_segmentation_single_gaussian(video_name, preproc = False, postproc = Fals
     first_frame = cv2.imread(back_list[0], 0)
 
     # Define background model
-    SIGMA_THR = 3  # number of standard deviations to define the background/foreground threshold
+    SIGMA_THR = alpha  # number of standard deviations to define the background/foreground threshold
     RHO = 0.01  # memory constant (to update background) ==> exaggerated to debug
     ROI = True
     PREPROC = preproc  # True
