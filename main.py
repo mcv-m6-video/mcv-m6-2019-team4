@@ -1,5 +1,5 @@
 from week1 import task1, task2, task3, task4
-from week2 import task1, task2
+from week2 import task1, task2, task3, task4
 
 
 def run_week1_tasks():
@@ -41,6 +41,12 @@ def run_week2_tasks():
         preproc=True,
         postproc=True
     )
+
+    # Task 3: State of the art
+    task3.compare_state_of_the_art()
+
+    # Task 4: Color space conversions
+    task4.compare_color_spaces()
 
 
 if __name__ == '__main__':
