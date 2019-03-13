@@ -8,7 +8,7 @@ from evaluation import intersection_over_union
 from utils import annotation_parser
 from paths import AICITY_DIR
 import numpy as np
-import bg_estimation
+from utils import bg_estimation
 
 MIN_AREA = 100
 MAX_AREA = 500000
@@ -19,7 +19,7 @@ class background_substractor():
 
     """
 
-    def __init__(self, method, sigma_thr=3, rho=0.01):
+    def __init__(self, method, sigma_thr=3, rho=0.01, colour_conversion='gray'):
 
         self.method = method
         if method == 'MOG2':
@@ -42,8 +42,10 @@ class background_substractor():
             POSTPROC = False  # True
             METHOD = 'non_adaptive'
             self.backSub = bg_estimation.SingleGaussianBackgroundModel(
-                (1080, 1920, 3), sigma_thr, rho, ROI, POSTPROC,
-                METHOD)
+                (1080, 1920, 3), colour_space=colour_conversion,
+                threshold=sigma_thr, rho=rho, roi=ROI, pre_process=PREPROC,
+                post_process=POSTPROC, method=METHOD)
+
         elif method == 'Team4-Adaptative':
             # Our own implementatiom
             ROI = False
@@ -52,8 +54,10 @@ class background_substractor():
             METHOD = 'adaptive'
 
             self.backSub = bg_estimation.SingleGaussianBackgroundModel(
-                (1080, 1920, 3), sigma_thr, rho, ROI, POSTPROC,
-                METHOD)
+                (1080, 1920, 3), colour_space=colour_conversion,
+                threshold=sigma_thr, rho=rho, roi=ROI, pre_process=PREPROC,
+                post_process=POSTPROC, method=METHOD)
+
         else:
             self.backSub = cv2.bgsegm.createBackgroundSubtractorMOG()
 
