@@ -1,27 +1,25 @@
 import cv2
 import matplotlib
 import matplotlib.pyplot as plt
+
 matplotlib.use('Agg')
 
 from evaluation import intersection_over_union
-from utils.annotation_parser import annotationsParser
-from utils.detection_gt_extractor import detectionExtractorGT
+from utils import annotation_parser
 from paths import AICITY_DIR
 import numpy as np
-from pathlib import Path
-from utils.background_estimation import bg_estimation
+import bg_estimation
 
-MIN_AREA =100
-MAX_AREA =  500000
+MIN_AREA = 100
+MAX_AREA = 500000
 
 
 class background_substractor():
-
     """  Wrapper class for applying background substraction models
 
     """
 
-    def __init__(self, method, sigma_thr = 3, rho = 0.01 ):
+    def __init__(self, method, sigma_thr=3, rho=0.01):
 
         self.method = method
         if method == 'MOG2':
@@ -37,14 +35,15 @@ class background_substractor():
         elif method == 'CNT':
             self.backSub = cv2.bgsegm.createBackgroundSubtractorCNT()
         elif method == 'Team4-Gaussian':
-            #Our own implementatiom
+            # Our own implementatiom
 
             ROI = False
             PREPROC = False  # True
             POSTPROC = False  # True
             METHOD = 'non_adaptive'
-            self.backSub = bg_estimation.SingleGaussianBackgroundModel((1080,1920,3), sigma_thr, rho, ROI, POSTPROC,
-                                                                   METHOD)
+            self.backSub = bg_estimation.SingleGaussianBackgroundModel(
+                (1080, 1920, 3), sigma_thr, rho, ROI, POSTPROC,
+                METHOD)
         elif method == 'Team4-Adaptative':
             # Our own implementatiom
             ROI = False
@@ -52,12 +51,11 @@ class background_substractor():
             POSTPROC = False  # True
             METHOD = 'adaptive'
 
-            self.backSub = bg_estimation.SingleGaussianBackgroundModel((1080,1920,3), sigma_thr, rho, ROI, POSTPROC,
-                                                                   METHOD)
+            self.backSub = bg_estimation.SingleGaussianBackgroundModel(
+                (1080, 1920, 3), sigma_thr, rho, ROI, POSTPROC,
+                METHOD)
         else:
             self.backSub = cv2.bgsegm.createBackgroundSubtractorMOG()
-
-
 
     def apply(self, image):
 
@@ -67,15 +65,13 @@ class background_substractor():
             Background substracted image
         """
 
-        return(self.backSub.apply(image))
-
+        return (self.backSub.apply(image))
 
     def getBackgroungImage(self, image):
-        return(self.backSub.getBackgroundImage())
+        return (self.backSub.getBackgroundImage())
 
 
-
-def process_image (image):
+def process_image(image):
     """  Apply  following operations to backgrouns substracted image to improve moving object detection:
             - Thresholding to remove shadows in some models
             - Morphological opening with a 5x5 circular structuring element to reduce noise
@@ -87,9 +83,9 @@ def process_image (image):
     """
 
     ret, image = cv2.threshold(image, 130, 255, cv2.THRESH_BINARY)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(4,4))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4, 4))
     image = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(10,10))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 10))
     image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
 
     roi_path = AICITY_DIR.joinpath('roi.jpg')
@@ -107,15 +103,17 @@ def get_detections(image):
         Detections
     """
 
-    detections =[]
+    detections = []
 
     retval, labels, stats, centroids = cv2.connectedComponentsWithStats(image)
 
     for i in range(len(stats)):
         if stats[i][4] > MIN_AREA and stats[i][4] < MAX_AREA:
-            detections.append([stats[i][0], stats[i][1], stats[i][0] + stats[i][2], stats[i][1] + stats[i][3]])
+            detections.append(
+                [stats[i][0], stats[i][1], stats[i][0] + stats[i][2],
+                 stats[i][1] + stats[i][3]])
 
-    detections = non_max_suppression_fast(np.array(detections),0)
+    detections = non_max_suppression_fast(np.array(detections), 0)
 
     return detections
 
@@ -171,21 +169,23 @@ def non_max_suppression_fast(boxes, overlapThresh):
 
         # delete all indexes from the index list that have
         idxs = np.delete(idxs, np.concatenate(([last],
-                                               np.where(overlap > overlapThresh)[0])))
+                                               np.where(
+                                                   overlap > overlapThresh)[
+                                                   0])))
 
     # return only the bounding boxes that were picked using the
     # integer data type
     return boxes[pick].astype("int")
 
 
-def add_detections_gt (image, frame_detections, gtExtractor, frame):
+def add_detections_gt(image, frame_detections, gtExtractor, frame):
     """  Add bounding boxes to GT and detections on a given image
 
     Returns:
         Image with rectangles corresponding to GT and detections
     """
 
-    #print detections
+    # print detections
     for detection in frame_detections:
         # format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
         cv2.rectangle(
@@ -195,7 +195,7 @@ def add_detections_gt (image, frame_detections, gtExtractor, frame):
             (0, 0, 255),
             2
         )
-    #print gt
+    # print gt
     for gtBBOX in gtExtractor.gt:
         if gtBBOX[0] == frame:
             cv2.rectangle(
@@ -207,6 +207,7 @@ def add_detections_gt (image, frame_detections, gtExtractor, frame):
             )
     return image
 
+
 def get_frame_bounding_box(detections, frame):
     """  Filter bounding boxes by frame
 
@@ -214,14 +215,14 @@ def get_frame_bounding_box(detections, frame):
         List with all bounding boxes corresponding to a given frame
     """
 
-
     frame_detections = []
     for j in range(len(detections)):
         if detections[j][0] == frame:
-            frame_detections.append([detections[j][2], detections[j][3], detections[j][4], detections[j][5]])
+            frame_detections.append(
+                [detections[j][2], detections[j][3], detections[j][4],
+                 detections[j][5]])
 
     return frame_detections
-
 
 
 def compute_mAP(precision, recall):
@@ -230,7 +231,6 @@ def compute_mAP(precision, recall):
     Returns:
         mean average precision
     """
-
 
     mAP = 0
 
@@ -245,8 +245,8 @@ def compute_mAP(precision, recall):
     return mAP
 
 
-def compute_precision_recall (detections_IoU, confidence_indices, FN, threshold, method, color_conversion):
-
+def compute_precision_recall(detections_IoU, confidence_indices, FN, threshold,
+                             method, color_conversion):
     """  Compute precision and recall given a list of IoU detections. Saves Precision-Recall curve
 
     """
@@ -254,8 +254,10 @@ def compute_precision_recall (detections_IoU, confidence_indices, FN, threshold,
     precision = []
     recall = []
 
-    #Sort detections_IoU according to confidence indexes
-    detections_IoU = [x for _, x in sorted(zip(confidence_indices, detections_IoU), reverse=True)]
+    # Sort detections_IoU according to confidence indexes
+    detections_IoU = [x for _, x in
+                      sorted(zip(confidence_indices, detections_IoU),
+                             reverse=True)]
 
     TP = 0
     FP = 0
@@ -268,7 +270,7 @@ def compute_precision_recall (detections_IoU, confidence_indices, FN, threshold,
         pr = TP / (TP + FP)
 
         if TP + FN == 0:
-            rc= 1
+            rc = 1
         else:
             rc = TP / (TP + FN)
 
@@ -281,16 +283,19 @@ def compute_precision_recall (detections_IoU, confidence_indices, FN, threshold,
     plt.plot(recall, precision)
     plt.ylabel('Precision')
     plt.xlabel('Recall')
-    plt.title('Precision-Recall curve \n' + 'Method: ' + method + ', and color conversion: ' + str(color_conversion) + '\n' + 'mAP = ' + str(mAP))
-    plt.savefig('figure_pr_curve' + method + '_' + str(color_conversion) +'.png')
+    plt.title(
+        'Precision-Recall curve \n' + 'Method: ' + method + ', and color conversion: ' + str(
+            color_conversion) + '\n' + 'mAP = ' + str(mAP))
+    plt.savefig(
+        'figure_pr_curve' + method + '_' + str(color_conversion) + '.png')
     plt.clf()
     plt.cla()
     plt.close()
-    #plt.show()
+    # plt.show()
 
 
-def compute_iou(gtExtractor, detections, threshold, method, color_conversion, frames):
-
+def compute_iou(gtExtractor, detections, threshold, method, color_conversion,
+                frames):
     """  Compute correspondences (and IoU) between detections and GT. Plots IoU vs number of frames.
     """
 
@@ -316,7 +321,8 @@ def compute_iou(gtExtractor, detections, threshold, method, color_conversion, fr
             gtDetected = -1
 
             for x in range(len(frame_gt)):
-                iou = intersection_over_union.iou_from_bb(frame_gt[x], frame_detections[y])
+                iou = intersection_over_union.iou_from_bb(frame_gt[x],
+                                                          frame_detections[y])
                 if iou >= maxIoU:
                     maxIoU = iou
                     gtDetected = x
@@ -341,40 +347,41 @@ def compute_iou(gtExtractor, detections, threshold, method, color_conversion, fr
                 FN = FN + 1
 
     # TODO Define confidence value for mAP computation
-    compute_precision_recall(detections_IoU, detections_IoU, FN, threshold, method, color_conversion)
+    compute_precision_recall(detections_IoU, detections_IoU, FN, threshold,
+                             method, color_conversion)
 
     plt.figure(2)
     plt.plot(IoUvsFrames)
     plt.ylabel('IoU')
     plt.xlabel('Frames')
-    plt.title('IoU with method: ' + method + ', and color conversion: ' + str(color_conversion))
-    plt.savefig('figure_IoU' + method + '_' + str(color_conversion) +'.png')
+    plt.title('IoU with method: ' + method + ', and color conversion: ' + str(
+        color_conversion))
+    plt.savefig('figure_IoU' + method + '_' + str(color_conversion) + '.png')
     plt.clf()
     plt.cla()
     plt.close()
-    #plt.show()
+    # plt.show()
 
 
-def analyze_sequence(method, color_conversion, sigma_thr = 3, rho = 0.01 ):
-
+def analyze_sequence(method, color_conversion, sigma_thr=3, rho=0.01):
     """  Analyze the video sequence with a given method and color conversion
     """
 
     # Read GT from dataset
-    gtExtractor = annotationsParser(AICITY_DIR.joinpath('m6-full_annotation.xml'))
+    gtExtractor = annotation_parser.annotationsParser(
+        AICITY_DIR.joinpath('m6-full_annotation.xml'))
 
-    bckg_subs = background_substractor(method, sigma_thr = sigma_thr, rho = rho )
+    bckg_subs = background_substractor(method, sigma_thr=sigma_thr, rho=rho)
 
-
-    video_name = 'video_' + method + '_' + str(color_conversion) +'.avi'
-    #video = cv2.VideoWriter(video_name,
+    video_name = 'video_' + method + '_' + str(color_conversion) + '.avi'
+    # video = cv2.VideoWriter(video_name,
     #                        cv2.VideoWriter_fourcc('M', 'P', '4', 'S'), 20,
     #                        #cv2.VideoWriter_fourcc('H', '2', '6', '4'), 10,
     #                       (1920, 1080))
 
     detections = []
 
-    #frames =100
+    # frames =100
     frames = gtExtractor.getGTNFrames()
     for i in range(frames):
         # load the image
@@ -391,24 +398,24 @@ def analyze_sequence(method, color_conversion, sigma_thr = 3, rho = 0.01 ):
         frame_detections = get_detections(image)
 
         for detection in frame_detections:
-            detections.append([i, 0, detection[0], detection[1], detection[2], detection[3], 1])
+            detections.append(
+                [i, 0, detection[0], detection[1], detection[2], detection[3],
+                 1])
 
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
         image = add_detections_gt(image, frame_detections, gtExtractor, i)
-        #show the output image
+        # show the output image
         cv2.imshow("Image", image)
         cv2.waitKey(1)
-        #video.write(image)
+        # video.write(image)
 
-    compute_iou(gtExtractor, detections,0.5 ,method, color_conversion, frames)
-
+    compute_iou(gtExtractor, detections, 0.5, method, color_conversion, frames)
 
 
 def run():
-
     test = True
 
-    methods =[
+    methods = [
         'MOG2',
         'LSBP',
         'GMG',
@@ -419,27 +426,27 @@ def run():
         'Team4-Adaptative'
     ]
 
-
-    color_conversions =[
+    color_conversions = [
         cv2.COLOR_BGR2HSV,
         cv2.COLOR_BGR2Luv,
         cv2.COLOR_BGR2Lab,
-        #cv2.COLOR_BGR2YCrCb,
-        #cv2.COLOR_BGR2HLS,
+        # cv2.COLOR_BGR2YCrCb,
+        # cv2.COLOR_BGR2HLS,
         None
     ]
 
-    #analyze_sequence('MOG2', None)
-    #analyze_sequence('MOG2', cv2.COLOR_BGR2Lab)
+    # analyze_sequence('MOG2', None)
+    # analyze_sequence('MOG2', cv2.COLOR_BGR2Lab)
 
     if not test:
         for method in methods:
             for color_conversion in color_conversions:
-                print ('Analyzing sequence with method: ' + method + ", and color conversion: " + str(color_conversion))
-                analyze_sequence(method,color_conversion)
+                print(
+                    f"Analyzing sequence with method: {method}, "
+                    f"and color conversion: {color_conversion}")
+                analyze_sequence(method, color_conversion)
     else:
-        analyze_sequence('Team4-Gaussian', None,  sigma_thr = 3)
-
+        analyze_sequence('Team4-Gaussian', None, sigma_thr=3)
 
 
 if __name__ == '__main__':

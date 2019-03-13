@@ -3,7 +3,7 @@ from paths import AICITY_DIR
 import glob
 import os
 import numpy as np
-from utils.background_estimation import bg_estimation
+import bg_estimation
 import matplotlib.pyplot as plt
 import cv2
 

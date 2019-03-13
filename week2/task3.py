@@ -1,11 +1,8 @@
+from background_substractor import analyze_sequence
 
-import cv2
-from utils.background_substraction.background_substractor import analyze_sequence
 
 def compare_state_of_the_art():
-
-
-    methods =[
+    methods = [
         'MOG2',
         'LSBP',
         'GMG',
@@ -16,8 +13,6 @@ def compare_state_of_the_art():
         'Team4-Adaptative'
     ]
 
-
     for method in methods:
-        print ('Analyzing sequence with method: ' + method)
+        print(f'Analyzing sequence with method: {method}')
         analyze_sequence(method, None)
-
