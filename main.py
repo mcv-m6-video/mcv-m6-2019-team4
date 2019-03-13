@@ -28,16 +28,16 @@ def run_week1_tasks():
 
 def run_week2_tasks():
     # Task 1: Single Gaussian modeling.
-    task1.bg_segmentation_single_gaussian("simple_gaussian", alpha=1)
+    task1.bg_segmentation_single_gaussian(video_name="simple_gaussian", alpha=1)
     task1.bg_segmentation_single_gaussian(
-        "simple_gaussian_prepostproc",
+        video_name="simple_gaussian_prepostproc",
         preproc=True,
         postproc=True
     )
 
     # Task 2: Adaptive Single Gaussian modeling
     task2.bg_segmentation_single_gaussian_adaptive(
-        "simple_gaussian_adaptive",
+        video_name="simple_gaussian_adaptive",
         preproc=True,
         postproc=True
     )

@@ -8,10 +8,12 @@ import matplotlib.pyplot as plt
 import cv2
 
 
-def bg_segmentation_single_gaussian(video_name, alpha = 3, preproc = False, postproc = False):
+def bg_segmentation_single_gaussian(video_name, alpha=3, preproc=False,
+                                    postproc=False):
     viz = True
     # Define path to video frames
-    filepaths = sorted(glob.glob(os.path.join(str(AICITY_DIR), 'frames/image-????.png')))  # change folder name (?)
+    filepaths = sorted(glob.glob(os.path.join(str(AICITY_DIR),
+                                              'frames/image-????.png')))  # change folder name (?)
     roi_path = os.path.join(str(AICITY_DIR), 'roi.jpg')
     percent_back = 25
     num_frames = len(filepaths)
@@ -29,10 +31,14 @@ def bg_segmentation_single_gaussian(video_name, alpha = 3, preproc = False, post
     POSTPROC = postproc  # True
     METHOD = 'non_adaptive'
 
-    bg_model = bg_estimation.SingleGaussianBackgroundModel(first_frame.shape, SIGMA_THR, RHO, ROI, POSTPROC, METHOD)
+    bg_model = bg_estimation.SingleGaussianBackgroundModel(first_frame.shape,
+                                                           SIGMA_THR, RHO, ROI,
+                                                           POSTPROC, METHOD)
 
-    print("Estimating background with first {0}% of frames".format(percent_back))
-    bg_model.estimate_bg_single_gaussian(back_list)  # MUST speed this up, it takes more than a minute
+    print(
+        "Estimating background with first {0}% of frames".format(percent_back))
+    bg_model.estimate_bg_single_gaussian(
+        back_list)  # MUST speed this up, it takes more than a minute
 
     if viz:
         plt.figure()
@@ -48,7 +54,8 @@ def bg_segmentation_single_gaussian(video_name, alpha = 3, preproc = False, post
     elif len(first_frame.shape) == 3 and first_frame.shape[-1] == 3:
         height, width, _ = first_frame.shape
     else:
-        print("FATAL: unexpected number of channels: must be '1' for grayscale, '3' for RGB")
+        print(
+            "FATAL: unexpected number of channels: must be '1' for grayscale, '3' for RGB")
 
     # Define video writer
     # video_name = 'background_estimation_single_adaptive_f_ROI_off.avi'
@@ -86,8 +93,14 @@ if __name__ == "__main__":
     method = 'non_adaptive'
     preproc = True
     postproc = True
-    video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc, postproc)
-    bg_segmentation_single_gaussian(video_name, preproc, postproc)
+    alpha = 3
+    video_name = f"BE_1gauss-{method}_pre-{preproc}_post-{postproc}_alpha-{alpha}"
+    bg_segmentation_single_gaussian(
+        video_name=video_name,
+        alpha=alpha,
+        preproc=preproc,
+        postproc=postproc
+    )
 
     # 1st: single gaussian, non adaptive, with ROI and NO post-processing
     # method = 'non-adaptive'
@@ -110,11 +123,10 @@ if __name__ == "__main__":
     # video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc, postproc)
     # bg_segmentation_single_gaussian(video_name, method, preproc, postproc)
     #
-    # # 4th: single gaussian, adaptive, with ROI and post-processing (w.morphological filters)
-    # method = 'adaptive'
-    # preproc = True
-    # postproc = True
-    # video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc, postproc)
-    # bg_segmentation_single_gaussian(video_name, method, preproc, postproc)
-
-
+    # 4th: single gaussian, adaptive, with ROI and post-processing (w.morphological filters)
+    method = 'adaptive'
+    preproc = True
+    postproc = True
+    video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc,
+                                                         postproc)
+    bg_segmentation_single_gaussian(video_name, method, preproc, postproc)
