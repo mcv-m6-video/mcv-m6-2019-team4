@@ -46,12 +46,12 @@ METHOD = 'adaptive'  # adaptive w. a single gaussian (e.g.: the background CAN b
 # TODO: speed-up estimation of background model (two for loops...+ (pre-processing on each))
 class SingleGaussianBackgroundModel(object):
 
-    def __init__(self, im_shape, threshold=SIGMA_THR, rho=RHO, roi=ROI, pre_process=False, post_process=True,
-                 method='adaptive'):
+    def __init__(self, im_shape, colour_space='gray', threshold=SIGMA_THR, rho=RHO, roi=ROI, pre_process=False,
+                 post_process=True, method='adaptive'):
         if len(im_shape) == 2 or (len(im_shape) == 3 and im_shape[-1] == 3):
             self.sum = np.zeros(im_shape).astype(np.uint64)
-            self.mean = np.zeros(im_shape)
-            self.var = np.zeros(im_shape)
+            self.mean = np.zeros(im_shape).astype(np.float64)
+            self.var = np.zeros(im_shape).astype(np.float64)
 
         else:
             print("FATAL: wrong number of channels, the frame must be either in grayscale or RGB")
@@ -64,6 +64,7 @@ class SingleGaussianBackgroundModel(object):
         self.pre_process = pre_process
         self.post_process = post_process
         self.method = method
+        self.colour_space = colour_space
 
     def running_average(self, curr_frame, detection):  # class_mask is not really needed (?)
         """
@@ -73,9 +74,10 @@ class SingleGaussianBackgroundModel(object):
         :return:
         """
         back = detection != 255  # mask for background pixels
+        # Automatically done
         # replicate the mask across channels (if channels > 1)
-        if len(self.shape) == 3 and self.shape[-1] > 1:
-            back = np.repeat(back[:, :, np.newaxis], self.shape[-1], axis=2)
+        # if len(self.shape) == 3 and self.shape[-1] > 1:
+        #     back = np.repeat(back[:, :, np.newaxis], self.shape[-1], axis=2)
 
         self.mean[back] = (1 - self.rho) * self.mean[back] + self.rho * curr_frame[back]   # update only background
 
@@ -87,9 +89,10 @@ class SingleGaussianBackgroundModel(object):
         :return:
         """
         back = detection != 255  # mask for background pixels
+        # Automatically done
         # replicate the mask across channels (if channels > 1)
-        if len(self.shape) == 3 and self.shape[-1] > 1:
-            back = np.repeat(back[:, :, np.newaxis], self.shape[-1], axis=2)
+        # if len(self.shape) == 3 and self.shape[-1] > 1:
+        #     back = np.repeat(back[:, :, np.newaxis], self.shape[-1], axis=2)
 
         self.var[back] = (1 - self.rho) * self.var[back] + self.rho * np.square(curr_frame[back] - self.mean[back])
 
@@ -114,7 +117,7 @@ class SingleGaussianBackgroundModel(object):
         # 1. Estimate mean image
         for frame_name in image_file_names:
             # Read frame
-            curr_frame = cv2.imread(frame_name, 0)
+            curr_frame = read_frame_colourspace(frame_name, self.colour_space)
             if self.pre_process:
                 curr_frame = denoise_frame(curr_frame)
             # Accumulate image
@@ -125,14 +128,14 @@ class SingleGaussianBackgroundModel(object):
         # 2. Estimate stddev image
         for frame_name in image_file_names:
             # Read frame
-            curr_frame = cv2.imread(frame_name, 0)
+            curr_frame = read_frame_colourspace(frame_name, self.colour_space)
             if self.pre_process:
                 curr_frame = denoise_frame(curr_frame)
             self.var += np.square(curr_frame - self.mean)
 
         self.var = self.var / (len(image_file_names) - 1)  # forgot about the -1
 
-        # 3 dim array with all the frames ==> THIS USES A LOOOT OF MEMORY
+        # 3 dim array with all the frames ==> THIS USES A LOOOT OF MEMORY (~10GB)
         # list_images = [cv2.imread(fp,0) for fp in image_file_names]
         # images = np.dstack(list_images)
         #
@@ -162,6 +165,9 @@ class SingleGaussianBackgroundModel(object):
         upper_threshold = self.mean + np.sqrt(self.var) * self.threshold
 
         detection = ~((image >= lower_threshold) & (image <= upper_threshold))
+        if len(self.shape) == 3 and self.shape[-1] == 3:  # case of colour
+            # Impose that to belong to foreground, all 3 channels must fall outside the threshold
+            detection = detection[:, :, 0] & detection[:, :, 1] & detection[:, :, 2]
 
         # Filter out detection outside ROI (if told so)
         if self.roi and roi_filename:  # ROI and non-empty path
@@ -185,6 +191,22 @@ class SingleGaussianBackgroundModel(object):
             self.running_variance(image, detection)
 
         return detection
+
+
+def read_frame_colourspace(frame_path, colour_conversion='gray'):
+    frame = cv2.imread(frame_path)  # BGR
+    if colour_conversion == 'RGB':
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    elif colour_conversion == 'HSV':
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    elif colour_conversion == 'Luv':
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2Luv)
+    elif colour_conversion == 'Lab':
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2Lab)
+    else:  # convert to grayscale
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    return frame
 
 
 def apply_morphological_filters(image):

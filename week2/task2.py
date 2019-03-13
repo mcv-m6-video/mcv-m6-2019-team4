@@ -3,12 +3,28 @@ from paths import AICITY_DIR
 import glob
 import os
 import numpy as np
-import bg_estimation
+from utils import bg_estimation
 import matplotlib.pyplot as plt
 import cv2
+import pickle
 
 
-def bg_segmentation_single_gaussian_adaptive(video_name, preproc = False, postproc = False):
+def load_model(model_name):
+    # Load model from disk
+    print("Loading model '{0}' ...".format(model_name))
+    with open(model_name, 'rb') as input_model:
+        bg_model = pickle.load(input_model)
+
+    return bg_model
+
+
+def save_model(model, model_name):
+    # Save model to disk
+    with open(model_name, 'wb') as output_model:
+        pickle.dump(model, output_model)
+
+
+def bg_segmentation_single_gaussian_adaptive(video_name, preproc=False, postproc=False):
     viz = True
     # Define path to video frames
     filepaths = sorted(glob.glob(os.path.join(str(AICITY_DIR), 'vdo_frames/image-????.png')))  # change folder name (?)
@@ -19,7 +35,13 @@ def bg_segmentation_single_gaussian_adaptive(video_name, preproc = False, postpr
     # Get back frames' names
     back_list = filepaths[:num_backFrames]
 
-    first_frame = cv2.imread(back_list[0], 0)
+    COLOUR = True
+    colour_conversion = 'RGB'
+    # Up to here we only care about the number of channels so using BGR is fine
+    if COLOUR:
+        first_frame = cv2.imread(back_list[0])  # Read in BGR
+    else:
+        first_frame = cv2.imread(back_list[0], 0)  # Read in grayscale
 
     # Define background model
     SIGMA_THR = 3  # number of standard deviations to define the background/foreground threshold
@@ -28,15 +50,33 @@ def bg_segmentation_single_gaussian_adaptive(video_name, preproc = False, postpr
     PREPROC = preproc  # True
     POSTPROC = postproc  # True
     METHOD = 'adaptive'  # adaptive w. a single gaussian (e.g.: the background CAN be updated)
+    MODEL_NAME = "AICITY_S03_c10_bg_model_cs-{0}.pkl".format(colour_conversion)
 
-    bg_model = bg_estimation.SingleGaussianBackgroundModel(first_frame.shape, SIGMA_THR, RHO, ROI, POSTPROC, METHOD)
+    if os.path.isfile(MODEL_NAME):  # it already exists, load instead of recompute (much faster)
+        bg_model = load_model(MODEL_NAME)
 
-    print("Estimating background with first '{0}'% of frames".format(percent_back))
-    bg_model.estimate_bg_single_gaussian(back_list)  # MUST speed this up, it takes more than a minute
+    else:  # it does not exists
+        bg_model = bg_estimation.SingleGaussianBackgroundModel(first_frame.shape, colour_space=colour_conversion,
+                                                               threshold=SIGMA_THR, rho=RHO, roi=ROI,
+                                                               pre_process=PREPROC, post_process=POSTPROC,
+                                                               method=METHOD)
+
+        print("Estimating background with first '{0}'% of frames".format(percent_back))
+        bg_model.estimate_bg_single_gaussian(back_list)  # MUST speed this up, it takes more than a minute
+
+        # Save it to avoid recomputing it any more
+        if not os.path.isfile(MODEL_NAME):
+            save_model(bg_model, MODEL_NAME)
+        else:
+            print("FATAL: another model with the same name already exists but should have been loaded before ")
+            return
 
     if viz:
         plt.figure()
-        plt.imshow(bg_model.mean, cmap='gray')
+        if COLOUR:
+            plt.imshow(bg_model.mean.astype(np.uint8))  # plot in whichever colourmap
+        else:
+            plt.imshow(bg_model.mean.astype(np.uint8), cmap='gray')  # must specify grayscale
         plt.show()
 
     # Detect foreground (rest of the sequence)
@@ -48,11 +88,11 @@ def bg_segmentation_single_gaussian_adaptive(video_name, preproc = False, postpr
     elif len(first_frame.shape) == 3 and first_frame.shape[-1] == 3:
         height, width, _ = first_frame.shape
     else:
-        print("FATAL: unexpected number of channels: must be '1' for grayscale, '3' for RGB")
+        print("FATAL: unexpected number of channels: must be '1' for grayscale, '3' for RGB, HSV, Lav or Luv")
 
     # Define video writer
     # video_name = 'background_estimation_single_adaptive_f_ROI_off.avi'
-    video_name = "{0}_rho-{1}_sigma_{2}.avi".format(video_name, RHO, SIGMA_THR)
+    video_name = "{0}_rho-{1}_sigma_{2}_cs-{3}.avi".format(video_name, RHO, SIGMA_THR, colour_conversion)
     four_cc = cv2.VideoWriter_fourcc(*'XVID')
     video = cv2.VideoWriter(video_name, four_cc, 10, (width, height))
     # mean_video_name = "{0}_mean.avi".format(video_name.replace('.avi', ''))
@@ -62,7 +102,8 @@ def bg_segmentation_single_gaussian_adaptive(video_name, preproc = False, postpr
 
     for frame in fore_list:
         print("Segmenting FG/BG frame: {0}".format(frame))
-        segm = bg_model.apply(cv2.imread(frame, 0), roi_filename=roi_path)
+        frame = bg_estimation.read_frame_colourspace(frame, colour_conversion)
+        segm = bg_model.apply(frame, roi_filename=roi_path)
         image = cv2.cvtColor(segm, cv2.COLOR_GRAY2BGR)
         # print("Mean image range: ({0:.2f}, {1:.2f})\nvar image range: ({2:.2f}, {3:.2f})".format(
         #     np.min(bg_model.mean), np.max(bg_model.mean), np.min(bg_model.var), np.max(bg_model.var)))
@@ -83,9 +124,9 @@ if __name__ == "__main__":
     # Note: ROI always in use (not so noticeable anyway with the exception of critical cases)
 
     # Customise at will (examples below):
-    preproc = True
+    preproc = False
     postproc = True
-    video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc, postproc)
+    video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format('adaptive', preproc, postproc)
     bg_segmentation_single_gaussian_adaptive(video_name, preproc, postproc)
 
     # 1st: single gaussian, non adaptive, with ROI and NO post-processing
@@ -115,5 +156,4 @@ if __name__ == "__main__":
     # postproc = True
     # video_name = "BE_1gauss-{0}_pre-{1}_post-{2}".format(method, preproc, postproc)
     # bg_segmentation_single_gaussian(video_name, method, preproc, postproc)
-
 
