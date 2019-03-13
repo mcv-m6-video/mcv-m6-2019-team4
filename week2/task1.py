@@ -61,7 +61,7 @@ def bg_segmentation_single_gaussian(video_name, alpha = 3, preproc = False, post
     # var_video = cv2.VideoWriter(var_video_name, four_cc, 10, (width, height))
 
     for frame in fore_list:
-        print("Segmenting FG/BG frame: {0}".format(frame))
+        print("Segmenting FG/BG frame: {0}".format(frame.split('/')[-1]))
         segm = bg_model.apply(cv2.imread(frame, 0), roi_filename=roi_path)
         image = cv2.cvtColor(segm, cv2.COLOR_GRAY2BGR)
         # print("Mean image range: ({0:.2f}, {1:.2f})\nvar image range: ({2:.2f}, {3:.2f})".format(
