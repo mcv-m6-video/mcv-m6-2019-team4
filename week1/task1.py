@@ -314,6 +314,7 @@ def compute_mAP(verbose: bool = False, plot: bool = False):
     mAP = ap_per_frame[:, 1].mean()
 
     print(f'Detections: {detections_path.stem} --> mAP: {mAP}')
+    return mAP
 
 
 """ T1.4 Foreground detection (qualitative) """
