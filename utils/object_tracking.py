@@ -37,6 +37,7 @@ class ROI:
         return '{} {} {} {}'.format(self.xTopLeft, self.yTopLeft, self.xBottomRight, self.yBottomRight)
 
     def overlap(self, otherROI):
+        # computes overlap of two ROI (self and other)
         overlap = 0
 
         if self.xTopLeft > otherROI.xBottomRight or self.xBottomRight < otherROI.xTopLeft:
@@ -127,25 +128,38 @@ class ObjectTracker:
     # gets a frame whose rois have no assigned object id and
     # returns a copy of the frame with assigned oject ids if
     # possible (-1 otherwise)
-    def _process_frame_overlap(self, untracked_frame: Frame):
-        overlap_th = 0.0
-
+    def _process_frame_overlap(self, untracked_frame: Frame, overlap_th = 0.0, unique_objects = True):
         last_frame = self.trackedFrames[untracked_frame.get_id() - 1]
 
         # Create a tracked frame with current frame id
         tracked_frame = Frame(untracked_frame.get_id())
 
+        last_frame_rois = last_frame.get_ROIs().copy()
+
         # for each untracked ROI in current frame
         for uROI in untracked_frame.get_ROIs():
-            # calculate roi overlappings to get the max one
-            overlapping = np.asarray([uROI.overlap(tROI) for tROI in last_frame.get_ROIs()])
-            max_idx = np.argmax(overlapping)
-            print(overlapping)
+            # calculate overlapping between current untracked roi
+            # and all tracked rois from previous frame
+            overlapping = np.asarray([uROI.overlap(tROI) for tROI in last_frame_rois])
+            if len(overlapping) == 0:
+                max_idx = -1
+            else:
+                max_idx = np.argmax(overlapping)
 
-            if np.max(overlapping) > overlap_th:
-                best_tROI = last_frame.get_ROIs()[max_idx]
+            if max_idx == -1:
+                tObjId = -1
+
+            elif np.max(overlapping) > overlap_th:
+
+                best_tROI = last_frame_rois[max_idx]
                 tObjId = best_tROI.objectId
                 # print("Best match for {} is {}".format(uROI, best_tROI))
+
+                if unique_objects:
+                    # remove object from last_frame_rois to ensure that objects
+                    # appear only once
+                    last_frame_rois.pop(max_idx)
+
             else:
                 tObjId = -1
 

@@ -6,9 +6,8 @@ import glob
 import os
 import matplotlib.pyplot as plt
 
-def load_data():
-    detector = detection_gt_extractor.detectionExtractorGT(
-        AICITY_DIR.joinpath('det', 'det_yolo3.txt'))
+def load_detections_txt(detections_file):
+    detector = detection_gt_extractor.detectionExtractorGT(detections_file)
 
     # frame objects creation
     frame_dict = {i: Frame(i) for i in range(1,detector.getGTNFrames()+1)}
@@ -21,7 +20,7 @@ def load_data():
     return frame_dict
 
 def overlap_tracking():
-    untracked_frames = load_data()
+    untracked_frames = load_detections_txt(AICITY_DIR.joinpath('det', 'det_yolo3.txt'))
     method = "RegionOverlap"
     tracker = ObjectTracker(method)
 
@@ -46,16 +45,13 @@ def overlap_tracking():
     video.release()
 
 if __name__ == "__main__":
-    untracked_frames = load_data()
+    untracked_frames = load_detections_txt(AICITY_DIR.joinpath('det', 'det_yolo3.txt'))
     method = "RegionOverlap"
     tracker = ObjectTracker(method)
 
     for id, frame in untracked_frames.items():
         print("Tracking objects in frame {}".format(id))
         tracker.process_frame(frame)
-
-        #if id == 3:
-            #break
 
     tracker.print_objects()
 
