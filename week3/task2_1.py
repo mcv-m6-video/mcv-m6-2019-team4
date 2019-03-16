@@ -24,4 +24,7 @@ if __name__ == "__main__":
         print("Tracking objects in frame {}".format(id))
         tracker.process_frame(frame)
 
+        #if id == 3:
+            #break
+
     tracker.print_objects()

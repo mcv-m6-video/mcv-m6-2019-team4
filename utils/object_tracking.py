@@ -32,7 +32,18 @@ class ROI:
         return '{} {} {} {}'.format(self.xTopLeft, self.yTopLeft, self.xBottomRight, self.yBottomRight)
 
     def overlap(self, otherROI):
-        return 15
+        overlap = 0
+        left = max(self.xTopLeft, otherROI.xTopLeft)
+        right = min(self.xBottomRight, otherROI.xBottomRight)
+        top = max(self.yTopLeft, otherROI.yTopLeft)
+        bottom = min(self.yBottomRight, otherROI.yBottomRight)
+
+        dx = left - right
+        dy = top - bottom
+        if (dx>=0) and (dy>=0):
+            overlap = dx * dy
+
+        return overlap
 
 class Frame:
     # collection of ROIs detected on an image frame
@@ -87,7 +98,16 @@ class ObjectTracker:
 
             # update TrackedObjects with new discovered rois
             for roi in tracked_frame.get_ROIs():
-                self.trackedObjects[roi.objectId].add_frame_roi(frame.get_id(), roi)
+                if roi.objectId == -1:
+                    # new object found
+                    id = self.lastObjectId + 1
+                    obj = TrackedObject(id)
+                    obj.add_frame_roi(frame.get_id(), roi)
+                    self.trackedObjects[id] = obj
+                    self.lastObjectId = id
+
+                else:
+                    self.trackedObjects[roi.objectId].add_frame_roi(frame.get_id(), roi)
 
         print("Adding new tracked frame {}".format(frame.get_id()))
         self.trackedFrames[frame.get_id()] = tracked_frame
@@ -96,6 +116,8 @@ class ObjectTracker:
     # returns a copy of the frame with assigned oject ids if
     # possible (-1 otherwise)
     def _process_frame_overlap(self, untracked_frame: Frame):
+        overlap_th = 1000.0
+
         last_frame = self.trackedFrames[untracked_frame.get_id() - 1]
 
         # Create a tracked frame with current frame id
@@ -106,11 +128,16 @@ class ObjectTracker:
             # calculate roi overlappings to get the max one
             overlapping = np.asarray([uROI.overlap(tROI) for tROI in last_frame.get_ROIs()])
             max_idx = np.argmax(overlapping)
-            best_tROI = last_frame.get_ROIs()[max_idx]
+            print(np.max(overlapping))
 
-            print("Best match for {} is {}".format(uROI, best_tROI))
+            if np.max(overlapping) > overlap_th:
+                best_tROI = last_frame.get_ROIs()[max_idx]
+                tObjId = best_tROI.objectId
+                # print("Best match for {} is {}".format(uROI, best_tROI))
+            else:
+                tObjId = -1
 
-            new_tROI = ROI(uROI.xTopLeft, uROI.yTopLeft, uROI.xBottomRight, uROI.yBottomRight, best_tROI.objectId)
+            new_tROI = ROI(uROI.xTopLeft, uROI.yTopLeft, uROI.xBottomRight, uROI.yBottomRight, tObjId)
             tracked_frame.add_ROI(new_tROI)
 
         return tracked_frame
