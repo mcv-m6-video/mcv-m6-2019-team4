@@ -1,4 +1,4 @@
-from background_substractor import analyze_sequence
+from utils.background_substractor import analyze_sequence
 
 
 def compare_state_of_the_art():

@@ -44,3 +44,6 @@ class detectionExtractorGT():
 
     def getGTList(self):
         return self.gt
+
+    def getAllFrame(self, i):
+        return [f for f in self.gt if f[0] == i]
