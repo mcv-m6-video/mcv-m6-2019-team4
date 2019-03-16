@@ -17,11 +17,11 @@ def load_data():
     return frame_dict
 
 if __name__ == "__main__":
-    frames = load_data()
-
+    untracked_frames = load_data()
     tracker = ObjectTracker("RegionOverlap")
-    tracker.process_frame(frames[1])
 
-    print(tracker.trackedObjects)
+    for id, frame in untracked_frames.items():
+        print("Tracking objects in frame {}".format(id))
+        tracker.process_frame(frame)
 
     tracker.print_objects()

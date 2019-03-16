@@ -1,3 +1,4 @@
+import numpy as np
 
 class TrackedObject:
     # a object with its track
@@ -61,7 +62,12 @@ class ObjectTracker:
 
     def process_frame(self, frame : Frame):
 
+        tracked_frame = None
+
         if self.firstFrame:
+            tracked_frame = Frame(frame.get_id())
+
+            # create a new TrackedObject for each ROI
             for r in frame.get_ROIs():
                 id = self.lastObjectId + 1
                 obj = TrackedObject(id)
@@ -69,15 +75,21 @@ class ObjectTracker:
                 self.trackedObjects[id] = obj
                 self.lastObjectId = id
 
+                tracked_frame.add_ROI( obj.get_track()[frame.get_id()] )
+
             self.firstFrame = False
 
         else:
-
             if self.method == "RegionOverlap":
                 tracked_frame = self._process_frame_overlap(frame)
             else:
                 tracked_frame = self._process_frame_kalman(frame)
 
+            # update TrackedObjects with new discovered rois
+            for roi in tracked_frame.get_ROIs():
+                self.trackedObjects[roi.objectId].add_frame_roi(frame.get_id(), roi)
+
+        print("Adding new tracked frame {}".format(frame.get_id()))
         self.trackedFrames[frame.get_id()] = tracked_frame
 
     # gets a frame whose rois have no assigned object id and
@@ -85,13 +97,29 @@ class ObjectTracker:
     # possible (-1 otherwise)
     def _process_frame_overlap(self, untracked_frame: Frame):
         last_frame = self.trackedFrames[untracked_frame.get_id() - 1]
-        pass
+
+        # Create a tracked frame with current frame id
+        tracked_frame = Frame(untracked_frame.get_id())
+
+        # for each untracked ROI in current frame
+        for uROI in untracked_frame.get_ROIs():
+            # calculate roi overlappings to get the max one
+            overlapping = np.asarray([uROI.overlap(tROI) for tROI in last_frame.get_ROIs()])
+            max_idx = np.argmax(overlapping)
+            best_tROI = last_frame.get_ROIs()[max_idx]
+
+            print("Best match for {} is {}".format(uROI, best_tROI))
+
+            new_tROI = ROI(uROI.xTopLeft, uROI.yTopLeft, uROI.xBottomRight, uROI.yBottomRight, best_tROI.objectId)
+            tracked_frame.add_ROI(new_tROI)
+
+        return tracked_frame
 
     # gets a frame whose rois have no assigned object id and
     # returns a copy of the frame with assigned oject ids if
     # possible (-1 otherwise)
     def _process_frame_kalman(self, untracked_frame: Frame):
-        
+
         pass
 
     def print_objects(self):
