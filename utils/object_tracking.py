@@ -1,4 +1,6 @@
 import numpy as np
+import cv2
+import random
 
 class TrackedObject:
     # a object with its track
@@ -8,6 +10,9 @@ class TrackedObject:
     def __init__(self, id):
         self.objectId = id
         self.track = {}
+        self.color = (int(random.random() * 256),
+                      int(random.random() * 256),
+                      int(random.random() * 256))
 
     def add_frame_roi(self, frame_id, roi):
         roi.objectId = self.objectId
@@ -33,13 +38,20 @@ class ROI:
 
     def overlap(self, otherROI):
         overlap = 0
+
+        if self.xTopLeft > otherROI.xBottomRight or self.xBottomRight < otherROI.xTopLeft:
+            return 0
+
+        if self.yTopLeft > otherROI.yBottomRight or self.yBottomRight < otherROI.yTopLeft:
+            return 0
+
         left = max(self.xTopLeft, otherROI.xTopLeft)
         right = min(self.xBottomRight, otherROI.xBottomRight)
         top = max(self.yTopLeft, otherROI.yTopLeft)
         bottom = min(self.yBottomRight, otherROI.yBottomRight)
 
-        dx = left - right
-        dy = top - bottom
+        dx = abs(left - right)
+        dy = abs(top - bottom)
         if (dx>=0) and (dy>=0):
             overlap = dx * dy
 
@@ -116,7 +128,7 @@ class ObjectTracker:
     # returns a copy of the frame with assigned oject ids if
     # possible (-1 otherwise)
     def _process_frame_overlap(self, untracked_frame: Frame):
-        overlap_th = 1000.0
+        overlap_th = 0.0
 
         last_frame = self.trackedFrames[untracked_frame.get_id() - 1]
 
@@ -128,7 +140,7 @@ class ObjectTracker:
             # calculate roi overlappings to get the max one
             overlapping = np.asarray([uROI.overlap(tROI) for tROI in last_frame.get_ROIs()])
             max_idx = np.argmax(overlapping)
-            print(np.max(overlapping))
+            print(overlapping)
 
             if np.max(overlapping) > overlap_th:
                 best_tROI = last_frame.get_ROIs()[max_idx]
@@ -154,5 +166,35 @@ class ObjectTracker:
             print('Object {}'.format(obj))
             for frame, roi in self.trackedObjects[obj].get_track().items():
                 print('\tin frame {} at position {}'.format(frame, roi))
+
+
+    def draw_frame(self, frame_number, image):
+        frame = self.trackedFrames[frame_number]
+
+        overlay = image.copy()
+        for roi in frame.get_ROIs():
+            color = self.trackedObjects[roi.objectId].color
+
+            cv2.rectangle(
+                overlay,
+                (int(roi.xTopLeft), int(roi.yTopLeft)),
+                (int(roi.xBottomRight), int(roi.yBottomRight)),
+                color,
+                -1
+            )
+
+            #roi_center = (int(roi.xTopLeft + (abs(roi.xTopLeft - roi.xBottomRight) / 2.0)),
+            #              int(roi.yTopLeft + (abs(roi.yTopLeft - roi.yBottomRight) / 2.0)) )
+            text_pos = (int(roi.xTopLeft+10), int(roi.yTopLeft+20))
+
+            cv2.putText(image, str(roi.objectId), text_pos, cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, .5, (0,0,0), 2)
+
+        alpha = .7
+        image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
+
+        return image
+
+
+
 
 

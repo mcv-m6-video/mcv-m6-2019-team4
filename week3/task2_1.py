@@ -1,6 +1,10 @@
 from utils import detection_gt_extractor
 from paths import AICITY_DIR
 from utils.object_tracking import Frame, ROI, ObjectTracker
+import cv2
+import glob
+import os
+import matplotlib.pyplot as plt
 
 def load_data():
     detector = detection_gt_extractor.detectionExtractorGT(
@@ -16,9 +20,35 @@ def load_data():
 
     return frame_dict
 
+def overlap_tracking():
+    untracked_frames = load_data()
+    method = "RegionOverlap"
+    tracker = ObjectTracker(method)
+
+    for id, frame in untracked_frames.items():
+        print("Tracking objects in frame {}".format(id))
+        tracker.process_frame(frame)
+
+    video_name = "{0}_{1}.avi".format("Tracking", method)
+    four_cc = cv2.VideoWriter_fourcc(*'XVID')
+    video = cv2.VideoWriter(video_name, four_cc, 10, (1920, 1080))
+
+    filepaths = sorted(glob.glob(os.path.join(str(AICITY_DIR), 'frames/image-????.png')))
+    for idx in range(1,len(filepaths)):
+        print(filepaths[idx])
+        image = cv2.imread(filepaths[idx])
+        image = tracker.draw_frame(idx, image)
+        cv2.imshow("Image", image)
+        cv2.waitKey(1)
+
+        video.write(image)
+
+    video.release()
+
 if __name__ == "__main__":
     untracked_frames = load_data()
-    tracker = ObjectTracker("RegionOverlap")
+    method = "RegionOverlap"
+    tracker = ObjectTracker(method)
 
     for id, frame in untracked_frames.items():
         print("Tracking objects in frame {}".format(id))
@@ -28,3 +58,4 @@ if __name__ == "__main__":
             #break
 
     tracker.print_objects()
+

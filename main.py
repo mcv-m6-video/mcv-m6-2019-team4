@@ -51,7 +51,7 @@ def run_week2_tasks():
 def run_week3_tasks():
     from week3 import task2_1
 
-    task2_1.load_data()
+    task2_1.overlap_tracking()
 
 if __name__ == '__main__':
     #run_week1_tasks()
