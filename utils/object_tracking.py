@@ -330,6 +330,8 @@ class ObjectTracker:
                         y2 = r.center()[1][0]
                         cv2.line(image, (int(x1), int(y1)), (int(x2), int(y2)),
                                  color, 2)
+                        cv2.line(overlay, (int(x1), int(y1)), (int(x2), int(y2)),
+                                 color, 2)
                         lastr = r
                 else:
                     if lastr_corrected == None and self.trackedObjects[roi.objectId].track_corrected.__contains__(i):
@@ -344,6 +346,8 @@ class ObjectTracker:
                        y2 = r.center()[1][0]
                        cv2.line(image, (int(x1), int(y1)), (int(x2), int(y2)),
                                  color, 2)
+                       cv2.line(overlay, (int(x1), int(y1)), (int(x2), int(y2)),
+                                color, 2)
                        lastr_corrected = r
 
             #roi_center = (int(roi.xTopLeft + (abs(roi.xTopLeft - roi.xBottomRight) / 2.0)),
