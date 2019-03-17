@@ -52,6 +52,7 @@ class KalmanFilter(object):
             vector of predicted state estimate
         """
         # Predicted state estimate
+        self.Skp = self.Skm
         self.x = np.round(np.dot(self.D, self.x))
         # Predicted estimate covariance
         self.Skm = np.dot(self.D, np.dot(self.Skp, self.D.T)) + self.Sd
