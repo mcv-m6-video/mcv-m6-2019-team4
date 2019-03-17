@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import random
-from utils.kalman_filter import KalmanFilter
+from utils.kalman_filter import KalmanFilter, KalmanFilter_ConstantVelocity
 
 class TrackedObject:
     # a object with its track
@@ -81,7 +81,7 @@ class KalmanTrackedObject(TrackedObject):
         self.objectId = id
         self.track = {}
         self.track_corrected = {}
-        self.KF = KalmanFilter(initial_roi.center())  # KF instance to track this object
+        self.KF = KalmanFilter_ConstantVelocity(initial_roi.center())  # KF instance to track this object
         self.color = (int(random.random() * 256),
                       int(random.random() * 256),
                       int(random.random() * 256))
