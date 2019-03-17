@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import random
-from utils.kalman_filter import KalmanFilter, KalmanFilter_ConstantVelocity
+from utils.kalman_filter import KalmanFilter, KalmanFilter_ConstantVelocity, KalmanFilter_ConstantAcceleration
 
 class TrackedObject:
     # a object with its track
@@ -81,10 +81,12 @@ class KalmanTrackedObject(TrackedObject):
         self.objectId = id
         self.track = {}
         self.track_corrected = {}
-        self.KF = KalmanFilter_ConstantVelocity(initial_roi.center())  # KF instance to track this object
+        self.KF = KalmanFilter_ConstantAcceleration(initial_roi.center())  # KF instance to track this object
+        #self.KF = KalmanFilter_ConstantVelocity(initial_roi.center())  # KF instance to track this object
         self.color = (int(random.random() * 256),
                       int(random.random() * 256),
                       int(random.random() * 256))
+        self.estimated_velocity = False
 
 
     def add_frame_roi(self, frame_id, roi:ROI):
@@ -93,8 +95,13 @@ class KalmanTrackedObject(TrackedObject):
         self.track[frame_id] = r
 
         center = roi.center()
-        self.KF.predict()
-        new_center = self.KF.correct(center, 1)
+        if not self.estimated_velocity:
+            self.KF.estimate_initial_velocity(center)
+            self.estimated_velocity = True
+        new_center = self.KF.predict()
+        #self.KF.predict()
+        #new_center = self.KF.correct(center, 1)
+        self.KF.correct(center, 1)
         raux = roi.reposition(new_center)
         r_c = ROI(raux.xTopLeft, raux.yTopLeft, raux.xBottomRight, raux.yBottomRight, self.objectId)
         self.track_corrected[frame_id] = r_c
