@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import random
+from utils.kalman_filter import KalmanFilter
 
 class TrackedObject:
     # a object with its track
@@ -58,6 +59,47 @@ class ROI:
 
         return overlap
 
+    def center(self):
+        return [[(self.xTopLeft + self.xBottomRight) / 2], [(self.yBottomRight + self.yTopLeft) / 2]]
+
+    def reposition(self, center):
+        w = (self.xTopLeft - self.xBottomRight)
+        h = (self.yBottomRight - self.yTopLeft)
+        r = ROI(self.xTopLeft, self.yTopLeft, self.xBottomRight, self.yBottomRight, self.objectId)
+        r.xTopLeft = center[0][0] - w / 2
+        r.yTopLeft = center[1][0] - h / 2
+        r.xBottomRight = center[0][0] + w / 2
+        r.yBottomRight = center[1][0] + h / 2
+        return r
+
+class KalmanTrackedObject(TrackedObject):
+    # a object with its track
+    # a track is a dictionary of frame_id and roi of the tracked
+    #   object on the frame
+
+    def __init__(self, id, initial_roi: ROI):
+        self.objectId = id
+        self.track = {}
+        self.track_corrected = {}
+        self.KF = KalmanFilter(initial_roi.center())  # KF instance to track this object
+        self.color = (int(random.random() * 256),
+                      int(random.random() * 256),
+                      int(random.random() * 256))
+
+
+    def add_frame_roi(self, frame_id, roi:ROI):
+        roi.objectId = self.objectId
+        r = ROI(roi.xTopLeft, roi.yTopLeft, roi.xBottomRight, roi.yBottomRight, self.objectId)
+        self.track[frame_id] = r
+
+        center = roi.center()
+        self.KF.predict()
+        new_center = self.KF.correct(center, 1)
+        raux = roi.reposition(new_center)
+        r_c = ROI(raux.xTopLeft, raux.yTopLeft, raux.xBottomRight, raux.yBottomRight, self.objectId)
+        self.track_corrected[frame_id] = r_c
+
+
 class Frame:
     # collection of ROIs detected on an image frame
 
@@ -94,7 +136,10 @@ class ObjectTracker:
             # create a new TrackedObject for each ROI
             for r in frame.get_ROIs():
                 id = self.lastObjectId + 1
-                obj = TrackedObject(id)
+                if self.method == "RegionOverlap":
+                    obj = TrackedObject(id)
+                else:
+                    obj = KalmanTrackedObject(id, r)
                 obj.add_frame_roi(frame.get_id(), r)
                 self.trackedObjects[id] = obj
                 self.lastObjectId = id
@@ -114,7 +159,10 @@ class ObjectTracker:
                 if roi.objectId == -1:
                     # new object found
                     id = self.lastObjectId + 1
-                    obj = TrackedObject(id)
+                    if self.method == "RegionOverlap":
+                        obj = TrackedObject(id)
+                    else:
+                        obj = KalmanTrackedObject(id, roi)
                     obj.add_frame_roi(frame.get_id(), roi)
                     self.trackedObjects[id] = obj
                     self.lastObjectId = id
@@ -171,9 +219,47 @@ class ObjectTracker:
     # gets a frame whose rois have no assigned object id and
     # returns a copy of the frame with assigned oject ids if
     # possible (-1 otherwise)
-    def _process_frame_kalman(self, untracked_frame: Frame):
+    def _process_frame_kalman(self, untracked_frame: Frame, overlap_th = 0.0, unique_objects = True):
+        last_frame = self.trackedFrames[untracked_frame.get_id() - 1]
 
-        pass
+        # Create a tracked frame with current frame id
+        tracked_frame = Frame(untracked_frame.get_id())
+
+        last_frame_rois = last_frame.get_ROIs().copy()
+
+        # for each untracked ROI in current frame
+        for uROI in untracked_frame.get_ROIs():
+            # calculate overlapping between current untracked roi
+            # and all tracked rois from previous frame
+            overlapping = np.asarray([uROI.overlap(tROI) for tROI in last_frame_rois])
+            if len(overlapping) == 0:
+                max_idx = -1
+            else:
+                max_idx = np.argmax(overlapping)
+
+            if max_idx == -1:
+                tObjId = -1
+
+            elif np.max(overlapping) > overlap_th:
+
+                best_tROI = last_frame_rois[max_idx]
+                tObjId = best_tROI.objectId
+                # print("Best match for {} is {}".format(uROI, best_tROI))
+
+                if unique_objects:
+                    # remove object from last_frame_rois to ensure that objects
+                    # appear only once
+                    last_frame_rois.pop(max_idx)
+
+            else:
+                tObjId = -1
+
+            new_tROI = ROI(uROI.xTopLeft, uROI.yTopLeft, uROI.xBottomRight, uROI.yBottomRight, tObjId)
+            tracked_frame.add_ROI(new_tROI)
+
+        return tracked_frame
+
+
 
     def print_objects(self):
         for obj in self.trackedObjects:
@@ -209,6 +295,67 @@ class ObjectTracker:
         return image
 
 
+    def draw_frame_kalman(self, frame_number, image):
+        frame = self.trackedFrames[frame_number]
+
+        overlay = image.copy()
+        for roi in frame.get_ROIs():
+            color = self.trackedObjects[roi.objectId].color
+            roiAux = self.trackedObjects[roi.objectId].track_corrected[frame_number]
+
+            cv2.rectangle(
+                overlay,
+                (int(roiAux.xTopLeft), int(roiAux.yTopLeft)),
+                (int(roiAux.xBottomRight), int(roiAux.yBottomRight)),
+                color,
+                -1
+            )
+
+            # For identified object tracks draw tracking line
+            #for i in range(len(tracker.tracks)):
+            lastr = None
+            lastr_corrected = None
+            corrected = True
+            for i in range(frame_number):
+                if not corrected:
+                    if lastr == None and self.trackedObjects[roi.objectId].track.__contains__(i):
+                        lastr = self.trackedObjects[roi.objectId].track[i]
+                    elif self.trackedObjects[roi.objectId].track.__contains__(i):
+
+                        # Draw trace line
+                        r = self.trackedObjects[roi.objectId].track[i]
+                        x1 = lastr.center()[0][0]
+                        y1 = lastr.center()[1][0]
+                        x2 = r.center()[0][0]
+                        y2 = r.center()[1][0]
+                        cv2.line(image, (int(x1), int(y1)), (int(x2), int(y2)),
+                                 color, 2)
+                        lastr = r
+                else:
+                    if lastr_corrected == None and self.trackedObjects[roi.objectId].track_corrected.__contains__(i):
+                       lastr_corrected = self.trackedObjects[roi.objectId].track_corrected[i]
+                    elif self.trackedObjects[roi.objectId].track_corrected.__contains__(i):
+
+                       # Draw trace line
+                       r = self.trackedObjects[roi.objectId].track_corrected[i]
+                       x1 = lastr_corrected.center()[0][0]
+                       y1 = lastr_corrected.center()[1][0]
+                       x2 = r.center()[0][0]
+                       y2 = r.center()[1][0]
+                       cv2.line(image, (int(x1), int(y1)), (int(x2), int(y2)),
+                                 color, 2)
+                       lastr_corrected = r
+
+            #roi_center = (int(roi.xTopLeft + (abs(roi.xTopLeft - roi.xBottomRight) / 2.0)),
+            #              int(roi.yTopLeft + (abs(roi.yTopLeft - roi.yBottomRight) / 2.0)) )
+            text_pos = (int(roi.xTopLeft+10), int(roi.yTopLeft+20))
+
+            cv2.putText(image, str(roi.objectId), text_pos, cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, .5, (0,0,0), 2)
+
+        alpha = .7
+        image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
+
+        return image
 
 
 
