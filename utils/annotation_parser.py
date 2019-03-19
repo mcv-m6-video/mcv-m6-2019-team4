@@ -38,7 +38,8 @@ class annotationsParser():
             for BBox in BBoxes:
                 # format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
                 if 'attribute' in BBox.keys():
-                    add_BBOX = BBox['attribute']['#text'] == 'false'
+                    #add_BBOX = BBox['attribute']['#text'] == 'false'
+                    add_BBOX = True
                 else:
                     add_BBOX = True
                 if add_BBOX:
@@ -78,3 +79,6 @@ class annotationsParser():
 
     def getGTList(self):
         return self.gt
+
+    def getAllFrame(self, i):
+        return [f for f in self.gt if f[0] == i]

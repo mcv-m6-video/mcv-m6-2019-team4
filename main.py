@@ -1,6 +1,5 @@
 from week1 import task1, task2, task3, task4
 from week2 import task1, task2, task3, task4
-import week3
 
 def run_week1_tasks():
     """
@@ -49,9 +48,11 @@ def run_week2_tasks():
     task4.compare_color_spaces()
 
 def run_week3_tasks():
-    from week3 import task2_1
+    from week3 import task2_1, task2_2
 
     task2_1.overlap_tracking()
+    task2_2.kalman_tracking()
+
 
 if __name__ == '__main__':
     #run_week1_tasks()

@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import random
 from utils.kalman_filter import KalmanFilter, KalmanFilter_ConstantVelocity
+import copy
 
 class TrackedObject:
     # a object with its track
@@ -125,6 +126,24 @@ class ObjectTracker:
         self.trackedObjects = {}
         self.trackedFrames = {}
         self.lastObjectId = 0
+
+    def load_annotated_frame(self, frame : Frame):
+        tracked_frame = Frame(frame.get_id())
+
+        # create a new TrackedObject for each ROI
+        for r in frame.get_ROIs():
+            if r.objectId in self.trackedObjects:
+                obj = self.trackedObjects[r.objectId]
+                obj.add_frame_roi(frame.get_id(), r)
+            else:
+                obj = TrackedObject(r.objectId)
+                obj.add_frame_roi(frame.get_id(), r)
+                self.trackedObjects[r.objectId] = obj
+
+            tracked_frame.add_ROI( ROI(r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight, r.objectId) )
+
+        print("Adding new tracked frame {}".format(frame.get_id()))
+        self.trackedFrames[frame.get_id()] = copy.copy(tracked_frame)
 
     def process_frame(self, frame : Frame):
 
@@ -267,12 +286,16 @@ class ObjectTracker:
             for frame, roi in self.trackedObjects[obj].get_track().items():
                 print('\tin frame {} at position {}'.format(frame, roi))
 
+    def print_frames(self):
+        for f in self.trackedFrames:
+            print('Frame {}'.format(self.trackedFrames[f].get_id()))
+            for roi in self.trackedFrames[f].get_ROIs():
+                print('\tobject {} at position {}'.format(roi.objectId, roi))
 
     def draw_frame(self, frame_number, image):
-        frame = self.trackedFrames[frame_number]
-
         overlay = image.copy()
-        for roi in frame.get_ROIs():
+
+        for roi in self.trackedFrames[frame_number].get_ROIs():
             color = self.trackedObjects[roi.objectId].color
 
             cv2.rectangle(
