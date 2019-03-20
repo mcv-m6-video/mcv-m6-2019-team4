@@ -14,12 +14,14 @@ def detections_to_bounding_boxes(detections: np.ndarray):
     ```
     to
     ```
-    [frame, left, upper, right, lower, score]
+    [frame-1, left, upper, right, lower, score]
+
+    Frame number is modified to match annotations' XML as they start at 0
     ```
      """
     return np.stack(
         (
-            detections[:, 0],
+            detections[:, 0] - np.ones(detections.shape[0]),
             detections[:, 1],
             detections[:, 2],
             detections[:, 1] + detections[:, 3],
