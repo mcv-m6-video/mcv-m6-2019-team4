@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import motmetrics as mm
 
 
-def load_detections_txt(detections_file):
-    detector = detection_gt_extractor.detectionExtractorGT(detections_file)
+def load_detections_txt(detections_file, gtFormat):
+    detector = detection_gt_extractor.detectionExtractorGT(detections_file, gtFormat)
 
     # frame objects creation
     frame_dict = {i: Frame(i) for i in range(1,detector.getGTNFrames()-1)}

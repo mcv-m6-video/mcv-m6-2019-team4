@@ -21,7 +21,8 @@ def overlap_tracking():
 
     # Load detections
     #untracked_frames = load_detections_txt(AICITY_DIR.joinpath('det', 'det_yolo3.txt'))
-    untracked_frames = load_detections_txt(os.path.join('week3', 'det_mask_rcnn.txt'))
+    #untracked_frames = load_detections_txt(AICITY_DIR.joinpath('det', 'det_mask_rcnn.txt'), "LTWH")
+    untracked_frames = load_detections_txt(os.path.join('week3', 'det_mask_rcnn.txt'), "TLBR")
     method = "RegionOverlap"
     tracker = ObjectTracker(method)
 

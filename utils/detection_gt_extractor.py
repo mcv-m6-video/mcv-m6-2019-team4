@@ -1,10 +1,12 @@
 class detectionExtractorGT():
 
-    def __init__(self, filePath):
+    def __init__(self, filePath, gtFormat="LTWH", confidence_th=.2):
         self.file = filePath
         # format detection & GT  [frame, ID, xTopLeft, yTopLeft, xBottomRight, yBottomRight, class]
         self.gt = []
         self.nFrames = 0
+        self.gtFormat = gtFormat
+        self.confidence_th = confidence_th
         self.extractGT()
 
     def extractGT(self):
@@ -12,10 +14,17 @@ class detectionExtractorGT():
         with open(self.file) as fp:
             for line in fp:
                 data = [float(elt.strip()) for elt in line.split(',')]
-                # format data: [frame, ID, left, top, width, height, 1, -1, -1, -1]
-                data = [data[0], data[1], data[2], data[3], data[2] + data[4],
-                        data[3] + data[5], data[6]]
-                self.gt.append(data)
+                if self.gtFormat == "LTWH":
+                    # format data: [frame, ID, left, top, width, height, 1, -1, -1, -1]
+                    data = [data[0], data[1], data[2], data[3], data[2] + data[4],
+                            data[3] + data[5], data[6]]
+                elif self.gtFormat == "TLBR":
+                    # format data: [frame, ID, left, top, right, bottom, 1, -1, -1, -1]
+                    data = [data[0], data[1], data[2], data[3], data[4],
+                            data[5], data[6]]
+
+                if data[-1] >= self.confidence_th:
+                    self.gt.append(data)
 
         for gtElement in self.gt:
             if int(gtElement[0]) > self.nFrames:
