@@ -3,6 +3,7 @@ import cv2
 import random
 import copy
 from utils.kalman_filter import KalmanFilter, KalmanFilter_ConstantVelocity, KalmanFilter_ConstantAcceleration
+import motmetrics as mm
 
 class TrackedObject:
     # a object with its track
@@ -392,4 +393,20 @@ class ObjectTracker:
         return image
 
 
+    def compute_mot_metrics(self, other):
+        acc = mm.MOTAccumulator(auto_id=False) # we will provide frame ids
+
+        for id, frame in self.trackedFrames.items():
+            detObjects = [r.objectId for r in frame.get_ROIs()]
+            detROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in frame.get_ROIs()]
+            gtObjects = [r.objectId for r in other.trackedFrames[id].get_ROIs()]
+            gtROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in other.trackedFrames[id].get_ROIs()]
+
+            dists = mm.distances.iou_matrix(gtROIs, detROIs, max_iou=0.5)
+            acc.update(gtObjects, detObjects, dists, id)
+
+            print("Compute metrics for frame {}".format(id))
+            print(acc.mot_events.loc[id])
+
+        return acc
 
