@@ -24,8 +24,8 @@ def detections_to_bounding_boxes(detections: np.ndarray):
             detections[:, 0] - np.ones(detections.shape[0]),
             detections[:, 1],
             detections[:, 2],
-            detections[:, 1] + detections[:, 3],
-            detections[:, 2] + detections[:, 4],
+            detections[:, 3],
+            detections[:, 4],
             detections[:, 5],
         ),
         axis=1
