@@ -6,6 +6,7 @@ import PIL.Image
 import numpy as np
 import xmltodict
 
+import detections_loader
 from paths import AICITY_DIR, AICITY_ANNOTATIONS, PROJECT_ROOT
 
 
@@ -158,15 +159,31 @@ if __name__ == '__main__':
 
     print(f'Dataset size: {len(dataset)}')
 
-    # Show first image and a crop of a detection
-    image, label = dataset[1900]
+    # Show an image and a crop of a detection
+    frame_num = 1900
+    image, label = dataset[frame_num]
     plt.imshow(image)
     plt.show()
 
-    crop = image.crop((label[2], label[3], label[4], label[5]))
+    crop = image.crop((label[2:6]))
     plt.imshow(crop)
     plt.show()
 
     # Get extended labels
     bbs = dataset.get_labels()
     print(bbs.shape)
+
+    # Test detections
+    # Selects detections from available model predictions
+    from paths import PROJECT_ROOT
+
+    detections_path = PROJECT_ROOT.joinpath('week3', 'det_mask_rcnn.txt')
+    detections = detections_loader.load_bounding_boxes(detections_path)
+
+    detections = detections[detections[:, 0] == frame_num]
+    detections = detections[np.argsort(detections[5, :])]
+    for idx in range(detections.shape[0]):
+        bb = detections[idx, 1:5]
+        crop = image.crop(bb)
+        plt.imshow(crop)
+        plt.show()
