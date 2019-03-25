@@ -12,6 +12,8 @@ matplotlib = "*"
 opencv-contrib-python = "*"
 requests = "*"
 torchvision = "*"
+motmetrics = "*"
+filterpy = "*"
 
 [dev-packages]
 
