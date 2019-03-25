@@ -63,7 +63,7 @@ def load_bounding_boxes(path: Path):
     [frame, left, upper, right, lower, score]
     ```
 
-    where frame starts at 1.0 and all elements are float types
+    where frame starts at 0.0 and all elements are float types
     """
     return detections_to_bounding_boxes(load_detections(path))
 
