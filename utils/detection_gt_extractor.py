@@ -16,11 +16,11 @@ class detectionExtractorGT():
                 data = [float(elt.strip()) for elt in line.split(',')]
                 if self.gtFormat == "LTWH":
                     # format data: [frame, ID, left, top, width, height, 1, -1, -1, -1]
-                    data = [data[0], data[1], data[2], data[3], data[2] + data[4],
+                    data = [data[0], -1, data[2], data[3], data[2] + data[4],
                             data[3] + data[5], data[6]]
                 elif self.gtFormat == "TLBR":
                     # format data: [frame, ID, left, top, right, bottom, 1, -1, -1, -1]
-                    data = [data[0], data[1], data[2], data[3], data[4],
+                    data = [data[0], -1, data[2], data[3], data[4],
                             data[5], data[6]]
 
                 if data[-1] >= self.confidence_th:

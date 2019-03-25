@@ -9,11 +9,10 @@ import matplotlib.pyplot as plt
 import motmetrics as mm
 
 
-def load_detections_txt(detections_file, gtFormat):
-    detector = detection_gt_extractor.detectionExtractorGT(detections_file, gtFormat)
-
+def load_detections_txt(detections_file, gtFormat, confidence_th=.2):
+    detector = detection_gt_extractor.detectionExtractorGT(detections_file, gtFormat, confidence_th)
     # frame objects creation
-    frame_dict = {i: Frame(i) for i in range(1,detector.getGTNFrames()-1)}
+    frame_dict = {i: Frame(i) for i in range(1,detector.getGTNFrames())}
 
     # filling frames with ROIs
     for i in frame_dict:
@@ -47,6 +46,22 @@ def make_video_from_tracker(trckr, video_name):
         print(filepaths[idx])
         image = cv2.imread(filepaths[idx])
         image = trckr.draw_frame(idx, image)
+        cv2.imshow("Image", image)
+        cv2.waitKey(1)
+
+        video.write(image)
+
+    video.release()
+
+def make_video_from_kalman_tracker(trckr, video_name):
+    four_cc = cv2.VideoWriter_fourcc(*'XVID')
+    video = cv2.VideoWriter(video_name, four_cc, 10, (1920, 1080))
+
+    filepaths = sorted(glob.glob(os.path.join(str(AICITY_DIR), 'frames/image-????.png')))
+    for idx in range(1,len(filepaths)):
+        print(filepaths[idx])
+        image = cv2.imread(filepaths[idx])
+        image = trckr.draw_frame_kalman(idx, image)
         cv2.imshow("Image", image)
         cv2.waitKey(1)
 

@@ -1,5 +1,5 @@
 from utils import detection_gt_extractor
-from week3.task2 import load_annotations, load_detections_txt, print_mot_metrics
+from week3.task2 import load_annotations, load_detections_txt, print_mot_metrics, make_video_from_tracker
 from paths import AICITY_DIR
 from utils.object_tracking import Frame, ROI, ObjectTracker
 import os
@@ -22,13 +22,16 @@ def overlap_tracking():
     # Load detections
     #untracked_frames = load_detections_txt(AICITY_DIR.joinpath('det', 'det_yolo3.txt'))
     #untracked_frames = load_detections_txt(AICITY_DIR.joinpath('det', 'det_mask_rcnn.txt'), "LTWH")
-    untracked_frames = load_detections_txt(os.path.join('week3', 'det_mask_rcnn.txt'), "TLBR")
+    #untracked_frames = load_detections_txt(os.path.join('week3', 'det_mask_rcnn.txt'), "TLBR")
+    untracked_frames = load_detections_txt(os.path.join('week3', 'det_retinanet.txt'), "LTWH", .3)
     method = "RegionOverlap"
     tracker = ObjectTracker(method)
 
     for id, frame in untracked_frames.items():
         print("Tracking objects in frame {}".format(id))
         tracker.process_frame(frame)
+
+    tracker.print_objects()
 
     #video_name = "{0}_{1}.avi".format("Tracking", method)
     #make_video_from_tracker(tracker, video_name)

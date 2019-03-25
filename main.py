@@ -50,8 +50,8 @@ def run_week2_tasks():
 def run_week3_tasks():
     from week3 import task2_1, task2_2
 
-    task2_1.overlap_tracking()
-    #task2_2.kalman_tracking()
+    #task2_1.overlap_tracking()
+    task2_2.kalman_tracking()
 
 
 if __name__ == '__main__':
