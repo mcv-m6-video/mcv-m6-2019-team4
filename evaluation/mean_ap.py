@@ -78,6 +78,8 @@ def get_precision_recall(det: np.ndarray,
     If `IoU >= th` then is a TP, FP otherwise.
 
     Args:
+        det: detections
+        gt: ground truth
         threshold: IoU threshold
 
     Returns:
