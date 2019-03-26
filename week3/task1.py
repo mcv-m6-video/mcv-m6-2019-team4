@@ -11,26 +11,13 @@ from utils import randomizer, detections_loader, detection_gt_extractor
 from paths import AICITY_DIR, AICITY_ANNOTATIONS
 
 
-def compute_mAP(verbose: bool = False, plot_interpolations: bool = False):
+def compute_mAP_with_offtheshelf_detections(verbose: bool = False,
+                                            plot_interpolations: bool = False):
     """ Compute mAP given some detections and a ground truth.
 
     It only gets the detections where we have ground truth information
     (regardless there is a bounding box on it or not)
-
-    Note:
-        Algorithm implemented::
-
-            * For every frame
-                * For each confidence level
-                    * Compute precision-recall (consider TP when IoU >= 0.5)
-                * Interpolate precision using 11 ranks r={0.0, 0.1, ... 1.0}
-                * AP = Average for all interpolated precisions
-            * mAP = Mean of AP for all frames
     """
-
-    # Parameters
-    iou_threshold = 0.5
-    recalls = np.linspace(start=0, stop=1.0, num=11).round(decimals=1)
 
     # Selects detections from available model predictions
     detections_path = Path(__file__).parent.joinpath('det_mask_rcnn.txt')
@@ -52,8 +39,42 @@ def compute_mAP(verbose: bool = False, plot_interpolations: bool = False):
 
     detections = detections[mask]
 
+    mAP, AP_per_frame = compute_mAP(detections, ground_truth,
+                                    verbose, plot_interpolations)
+
+    print(f'Detections: {detections_path.stem} --> mAP: {mAP}')
+    plt.plot(AP_per_frame)
+    plt.plot(np.repeat(mAP, len(AP_per_frame)))
+    plt.ylabel('AP')
+    plt.xlabel('frame number')
+    plt.autoscale(enable=True, axis='x', tight=True)
+    plt.ylim((0, 1))
+    plt.show()
+
+
+def compute_mAP(detections, ground_truth,
+                verbose: bool = False, plot_interpolations: bool = False):
+    """ Compute mAP given some detections and a ground truth.
+
+    Note:
+        Algorithm implemented::
+
+            * For every frame
+                * For each confidence level
+                    * Compute precision-recall (consider TP when IoU >= 0.5)
+                * Interpolate precision using 11 ranks r={0.0, 0.1, ... 1.0}
+                * AP = Average for all interpolated precisions
+            * mAP = Mean of AP for all frames
+    """
+    # Parameters
+    iou_threshold = 0.5
+    recalls = np.linspace(start=0, stop=1.0, num=11).round(decimals=1)
+
+    frame_numbers = np.unique(ground_truth[:, 0])
+
     # Computes AP for every frame
     ap_per_frame = np.empty((0, 2))
+
     for frame_number in frame_numbers:
         det = detections[detections[:, 0] == frame_number]
         gt = ground_truth[ground_truth[:, 0] == frame_number]
@@ -126,17 +147,9 @@ def compute_mAP(verbose: bool = False, plot_interpolations: bool = False):
 
     mAP = ap_per_frame[:, 1].mean()
 
-    print(f'Detections: {detections_path.stem} --> mAP: {mAP}')
     return mAP, ap_per_frame[:, 1]
 
 
 if __name__ == '__main__':
-    mAP, AP_per_frame = compute_mAP(verbose=False, plot_interpolations=False)
-
-    plt.plot(AP_per_frame)
-    plt.plot(np.repeat(mAP, len(AP_per_frame)))
-    plt.ylabel('AP')
-    plt.xlabel('frame number')
-    plt.autoscale(enable=True, axis='x', tight=True)
-    plt.ylim((0, 1))
-    plt.show()
+    compute_mAP_with_offtheshelf_detections(verbose=False,
+                                            plot_interpolations=False)
