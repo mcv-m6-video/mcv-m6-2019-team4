@@ -44,16 +44,19 @@ class AICityDataset(object):
         # frame_id=1 -> frame=0002.png -> second element -> images_paths[1] ...
         # frame_id=n -> frame={n+1}.png -> n-th element -> images_paths[n] ...
 
-        # Reads image using opencv
-        # image = cv2.imread(str(self.images_paths[idx]))
-
         # Reads image using PIL
         label = self.labels[idx]
         frame_id = int(label[0])
         return (
-            PIL.Image.open(self.images_paths[frame_id], mode='r'),
+            self.get_pil_image(frame_id),
             label
         )
+
+    def get_pil_image(self, frame_id):
+        return PIL.Image.open(self.images_paths[frame_id], mode='r')
+
+    def get_cv2_image(self, frame_id):
+        return cv2.imread(str(self.images_paths[frame_id]))
 
     def __len__(self):
         return self.labels.shape[0]
@@ -178,7 +181,7 @@ if __name__ == '__main__':
     from paths import PROJECT_ROOT
 
     detections_path = PROJECT_ROOT.joinpath('week3', 'det_mask_rcnn.txt')
-    detections = detections_loader.load_bounding_boxes(detections_path)
+    detections = detections_loader.load_bounding_boxes(detections_path, False)
 
     detections = detections[detections[:, 0] == frame_num]
     detections = detections[np.argsort(detections[5, :])]
