@@ -5,12 +5,39 @@ import numpy as np
 from paths import AICITY_DIR
 
 
-def detections_to_bounding_boxes(detections: np.ndarray):
+def detections_to_bounding_boxes_width_height(detections: np.ndarray):
     """ Convert detections to bounding boxes.
 
     Transforms from
     ```
     [frame, left, top, width, height, score]
+    ```
+    to
+    ```
+    [frame-1, left, upper, right, lower, score]
+
+    Frame number is modified to match annotations' XML as they start at 0
+    ```
+     """
+    return np.stack(
+        (
+            detections[:, 0] - np.ones(detections.shape[0]),
+            detections[:, 1],
+            detections[:, 2],
+            detections[:, 3] + detections[:, 1],
+            detections[:, 4] + detections[:, 2],
+            detections[:, 5],
+        ),
+        axis=1
+    )
+
+
+def detections_to_bounding_boxes(detections: np.ndarray):
+    """ Convert detections to bounding boxes.
+
+    Transforms from
+    ```
+    [frame, left, top, right, bottom, score]
     ```
     to
     ```
@@ -54,7 +81,7 @@ def load_detections(path: Path):
     return np.delete(data, [1, 7, 8, 9], axis=1)
 
 
-def load_bounding_boxes(path: Path):
+def load_bounding_boxes(path: Path, contains_width_and_height: bool):
     """ Load bounding boxes given a path.
 
     Detections are formatted as
@@ -65,7 +92,10 @@ def load_bounding_boxes(path: Path):
 
     where frame starts at 0.0 and all elements are float types
     """
-    return detections_to_bounding_boxes(load_detections(path))
+    if contains_width_and_height:
+        return detections_to_bounding_boxes_width_height(load_detections(path))
+    else:
+        return detections_to_bounding_boxes(load_detections(path))
 
 
 if __name__ == '__main__':

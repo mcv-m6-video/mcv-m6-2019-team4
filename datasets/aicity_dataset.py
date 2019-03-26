@@ -181,7 +181,7 @@ if __name__ == '__main__':
     from paths import PROJECT_ROOT
 
     detections_path = PROJECT_ROOT.joinpath('week3', 'det_mask_rcnn.txt')
-    detections = detections_loader.load_bounding_boxes(detections_path)
+    detections = detections_loader.load_bounding_boxes(detections_path, False)
 
     detections = detections[detections[:, 0] == frame_num]
     detections = detections[np.argsort(detections[5, :])]

@@ -247,7 +247,7 @@ def compute_mAP(verbose: bool = False, plot: bool = False):
     # detections_path = AICITY_DIR.joinpath('det', 'det_ssd512.txt')
     # detections_path = AICITY_DIR.joinpath('det', 'det_yolo3.txt')
 
-    detections = detections_loader.load_bounding_boxes(detections_path)
+    detections = detections_loader.load_bounding_boxes(detections_path, False)
     dataset = AICityDataset(AICITY_DIR, AICITY_ANNOTATIONS)
     ground_truth = dataset.get_labels()
 
