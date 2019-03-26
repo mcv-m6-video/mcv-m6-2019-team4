@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "f71fe56f3528409ce61b2cbe1fb32bfabd0cd42fbbe2d4bdb8275e99e48ed8da"
+            "sha256": "de622c746ebb7103795bde8bbcbd11e060933140db35cbeac2d9bccaaffbefd6"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -43,6 +43,24 @@
             ],
             "index": "pypi",
             "version": "==1.4.5"
+        },
+        "font-source-serif-pro": {
+            "hashes": [
+                "sha256:38dd9a8d8027d22aa8ef2d10d27d7c558701b32772ff9f3790f509577e91dca4",
+                "sha256:43572ea00305e7fb0d2767475cf31196dbf6d487581bf7885a521274e060c882",
+                "sha256:d903ac3e5c3515df2ea98654fc04b6399069f74152f8b9136db4c4c16a75e2ce"
+            ],
+            "index": "pypi",
+            "version": "==0.0.1"
+        },
+        "fonts": {
+            "hashes": [
+                "sha256:bc4e3d7923bb09013606fcd7bf5c66d95af5ddd094a14a09195ebdab9808c40d",
+                "sha256:c626655b75a60715e118e44e270656fd22fd8f54252901ff6ebf1308ad01c405",
+                "sha256:e5f551379088ab260c2537980c3ccdff8af93408d9d4fa3319388d2ee25b7b6d"
+            ],
+            "index": "pypi",
+            "version": "==0.0.3"
         },
         "idna": {
             "hashes": [
