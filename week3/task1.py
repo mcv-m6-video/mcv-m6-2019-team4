@@ -121,6 +121,7 @@ def compute_mAP_with_offtheshelf_detections(verbose: bool = False,
 
     # Selects detections from available model predictions
     detections_path = Path(__file__).parent.joinpath('det_mask_rcnn.txt')
+    detections_path = Path(__file__).parent.joinpath('det_retinanet.txt')
     # detections_path = AICITY_DIR.joinpath('det', 'det_mask_rcnn.txt')
 
     detections = detections_loader.load_bounding_boxes(detections_path)
@@ -151,8 +152,9 @@ def compute_mAP_with_offtheshelf_detections(verbose: bool = False,
           f'Min AP found in frame: {frame_worst} ({AP_per_frame[frame_worst]})'
           f'Frame sorted by best AP: {np.argsort(AP_per_frame)}')
 
-    show_example(int(frame_best), 'best')
-    show_example(int(frame_worst), 'worst')
+
+    show_example(dataset, detections_path, int(frame_best), 'best')
+    show_example(dataset, detections_path, int(frame_worst), 'worst')
 
 
 def plot_AP_per_frame(mAP, AP_per_frame):
@@ -168,16 +170,17 @@ def plot_AP_per_frame(mAP, AP_per_frame):
     return mAP, AP_per_frame
 
 
-def show_example(frame_num: int, title: str):
+def show_example(dataset, detections_path, frame_num: int, title: str):
     # Load groundtruth
-    dataset = AICityDataset(AICITY_DIR, AICITY_ANNOTATIONS)
+    # dataset = AICityDataset(AICITY_DIR, AICITY_ANNOTATIONS)
     labels: np.ndarray = dataset.get_labels()
     gt = labels[labels[:, 0] == frame_num]
     image: Image = dataset.get_pil_image(frame_num)
     coord_gt = gt[:, 2:6]
 
     # Load detections
-    detections_path = Path(__file__).parent.joinpath('det_mask_rcnn.txt')
+    # detections_path = Path(__file__).parent.joinpath('det_mask_rcnn.txt')
+    # detections_path = Path(__file__).parent.joinpath('det_retinanet.txt')
     detections = detections_loader.load_bounding_boxes(detections_path)
     detections = detections[detections[:, 0] == frame_num]
     coord_det_and_confidences = detections[:, 1:6]
