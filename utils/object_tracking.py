@@ -150,7 +150,7 @@ class ObjectTracker:
 
             tracked_frame.add_ROI( ROI(r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight, r.objectId) )
 
-        print("Adding new tracked frame {}".format(frame.get_id()))
+        #print("Adding new tracked frame {}".format(frame.get_id()))
         self.trackedFrames[frame.get_id()] = copy.copy(tracked_frame)
 
     def process_frame(self, frame : Frame):
@@ -197,7 +197,7 @@ class ObjectTracker:
                 else:
                     self.trackedObjects[roi.objectId].add_frame_roi(frame.get_id(), roi)
 
-        print("Adding new tracked frame {}".format(frame.get_id()))
+        #print("Adding new tracked frame {}".format(frame.get_id()))
         self.trackedFrames[frame.get_id()] = tracked_frame
 
     # gets a frame whose rois have no assigned object id and
@@ -397,16 +397,30 @@ class ObjectTracker:
         acc = mm.MOTAccumulator(auto_id=False) # we will provide frame ids
 
         for id, frame in self.trackedFrames.items():
-            detObjects = [r.objectId for r in frame.get_ROIs()]
-            detROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in frame.get_ROIs()]
+            if self.method == "RegionOverlap":
+
+                detObjects = [r.objectId for r in frame.get_ROIs()]
+                detROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in frame.get_ROIs()]
+
+            else: # Kalman
+                detObjects = [r.objectId for r in frame.get_ROIs()]
+                aux = [self.trackedObjects[id] for id in detObjects]
+                detROIs = [[r.track_corrected[id].xTopLeft,
+                            r.track_corrected[id].yTopLeft,
+                            r.track_corrected[id].xBottomRight,
+                            r.track_corrected[id].yBottomRight] for r in aux]
+
+
+
             gtObjects = [r.objectId for r in other.trackedFrames[id].get_ROIs()]
-            gtROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in other.trackedFrames[id].get_ROIs()]
+            gtROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in
+                      other.trackedFrames[id].get_ROIs()]
 
             dists = mm.distances.iou_matrix(gtROIs, detROIs, max_iou=0.5)
             acc.update(gtObjects, detObjects, dists, id)
 
-            print("Compute metrics for frame {}".format(id))
-            print(acc.mot_events.loc[id])
+            #print("Compute metrics for frame {}".format(id))
+            #print(acc.mot_events.loc[id])
 
         return acc
 
