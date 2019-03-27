@@ -124,8 +124,11 @@ def compute_mAP_with_offtheshelf_detections(verbose: bool = False,
     # detections_path = Path(__file__).parent.joinpath('det_mask_rcnn.txt')
     # detections = detections_loader.load_bounding_boxes(detections_path, False)
 
-    detections_path = Path(__file__).parent.joinpath('det_retinanet.txt')
-    detections_all = detections_loader.load_bounding_boxes(detections_path, True)
+    # detections_path = Path(__file__).parent.joinpath('det_retinanet.txt')
+    # detections_all = detections_loader.load_bounding_boxes(detections_path, True)
+
+    detections_path = Path(__file__).parent.joinpath('det_faster_rcnn.txt')
+    detections_all = detections_loader.load_bounding_boxes(detections_path, False)
 
     dataset = AICityDataset(AICITY_DIR, AICITY_ANNOTATIONS)
     ground_truth = dataset.get_labels()
