@@ -3,6 +3,7 @@ import cv2
 import random
 import copy
 from utils.kalman_filter import KalmanFilter, KalmanFilter_ConstantVelocity, KalmanFilter_ConstantAcceleration
+from utils.optical_flow_tracker import  OpticalFlowTracker
 import motmetrics as mm
 
 class TrackedObject:
@@ -108,6 +109,32 @@ class KalmanTrackedObject(TrackedObject):
         r_c = ROI(raux.xTopLeft, raux.yTopLeft, raux.xBottomRight, raux.yBottomRight, self.objectId)
         self.track_corrected[frame_id] = r_c
 
+class OpticalFlowTrackedObject(TrackedObject):
+    # a object with its track
+    # a track is a dictionary of frame_id and roi of the tracked
+    #   object on the frame
+
+    def __init__(self, id, initial_image, initial_roi: ROI):
+        self.objectId = id
+        self.track = {}
+        self.track_corrected = {}
+        self.OF = OpticalFlowTracker(initial_image, initial_roi)
+        self.color = (int(random.random() * 256),
+                      int(random.random() * 256),
+                      int(random.random() * 256))
+
+
+    def add_frame_roi(self, frame_id, roi:ROI, image):
+        roi.objectId = self.objectId
+        r = ROI(roi.xTopLeft, roi.yTopLeft, roi.xBottomRight, roi.yBottomRight, self.objectId)
+        self.track[frame_id] = r
+
+        center = roi.center()
+        new_center = self.OF.predict(image)
+        self.OF.correct(image, roi)
+        raux = roi.reposition(new_center)
+        r_c = ROI(raux.xTopLeft, raux.yTopLeft, raux.xBottomRight, raux.yBottomRight, self.objectId)
+        self.track_corrected[frame_id] = r_c
 
 class Frame:
     # collection of ROIs detected on an image frame
@@ -165,6 +192,8 @@ class ObjectTracker:
                 id = self.lastObjectId + 1
                 if self.method == "RegionOverlap":
                     obj = TrackedObject(id)
+                elif self.method == 'OpticalFlow':
+                    obj = OpticalFlowTrackedObject(id,r)
                 else:
                     obj = KalmanTrackedObject(id, r)
                 obj.add_frame_roi(frame.get_id(), r)
@@ -178,6 +207,8 @@ class ObjectTracker:
         else:
             if self.method == "RegionOverlap":
                 tracked_frame = self._process_frame_overlap(frame)
+            elif self.method == 'OpticalFlow':
+                tracked_frame = self._process_frame_optical_flow(frame)
             else:
                 tracked_frame = self._process_frame_kalman(frame)
 
@@ -188,6 +219,8 @@ class ObjectTracker:
                     id = self.lastObjectId + 1
                     if self.method == "RegionOverlap":
                         obj = TrackedObject(id)
+                    elif self.method == 'OpticalFlow':
+                        obj = OpticalFlowTrackedObject(id, roi)
                     else:
                         obj = KalmanTrackedObject(id, roi)
                     obj.add_frame_roi(frame.get_id(), roi)
@@ -286,7 +319,48 @@ class ObjectTracker:
 
         return tracked_frame
 
+    # gets a frame whose rois have no assigned object id and
+    # returns a copy of the frame with assigned oject ids if
+    # possible (-1 otherwise)
+    def _process_frame_optical_flow(self, untracked_frame: Frame, overlap_th = 0.0, unique_objects = True):
+        last_frame = self.trackedFrames[untracked_frame.get_id() - 1]
 
+        # Create a tracked frame with current frame id
+        tracked_frame = Frame(untracked_frame.get_id())
+
+        last_frame_rois = last_frame.get_ROIs().copy()
+
+        # for each untracked ROI in current frame
+        for uROI in untracked_frame.get_ROIs():
+            # calculate overlapping between current untracked roi
+            # and all tracked rois from previous frame
+            overlapping = np.asarray([uROI.overlap(tROI) for tROI in last_frame_rois])
+            if len(overlapping) == 0:
+                max_idx = -1
+            else:
+                max_idx = np.argmax(overlapping)
+
+            if max_idx == -1:
+                tObjId = -1
+
+            elif np.max(overlapping) > overlap_th:
+
+                best_tROI = last_frame_rois[max_idx]
+                tObjId = best_tROI.objectId
+                # print("Best match for {} is {}".format(uROI, best_tROI))
+
+                if unique_objects:
+                    # remove object from last_frame_rois to ensure that objects
+                    # appear only once
+                    last_frame_rois.pop(max_idx)
+
+            else:
+                tObjId = -1
+
+            new_tROI = ROI(uROI.xTopLeft, uROI.yTopLeft, uROI.xBottomRight, uROI.yBottomRight, tObjId)
+            tracked_frame.add_ROI(new_tROI)
+
+        return tracked_frame
 
     def print_objects(self):
         for obj in self.trackedObjects:
