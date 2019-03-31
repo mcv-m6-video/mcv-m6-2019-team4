@@ -104,14 +104,14 @@ class BlockedImage:
         col_start = max(0, x_block_center - window_radius)
         col_end = x_block_center + window_radius
 
-        #print(row_start, row_end, col_start, col_end)
-        src = self.src_image[ row_start:row_end, col_start:col_end]
+        #print(y_block_center, x_block_center, block.y, block.x, row_start, row_end, col_start, col_end)
+        src = self.src_image[row_start:row_end, col_start:col_end]
 
         cmp_blocks = []
         for r in range(0, src.shape[0], step):
             for c in range(0, src.shape[1], step):
                 cmp_blocks.append( Block( block.block_size,
-                                          x_block_center + c, y_block_center + r,
+                                          col_start + c, row_start + r,
                                           src[r:r+block.block_size,c:c+block.block_size] ) )
 
         dists = [block.error(other, dist_method) for other in cmp_blocks]
@@ -151,10 +151,48 @@ def backward_compensated_image(past_image, curr_image, block_size, search_area_r
 
     return curr.paintBlocks()
 
+def forward_compensated_optical_flow(past_image, curr_image, block_size, search_area_radius, search_step, dist_error_method):
+    # 3 channels: du, dv and valid
+    opt_flow = np.zeros((past_image.shape[0], past_image.shape[1], 3))
+    past = BlockedImage(past_image, block_size)
+    curr = BlockedImage(curr_image, block_size)
+    for past_block in past.getBlocks():
+        curr_block = curr.blockMatch(past_block, search_area_radius, search_step, dist_error_method)
+        dv = curr_block.x - past_block.x
+        du = curr_block.y - past_block.y
+        valid = 1
+
+        if opt_flow[curr_block.y:curr_block.y+block_size, curr_block.x:curr_block.x+block_size].shape == (block_size, block_size, 3):
+            opt_flow[curr_block.y:curr_block.y+block_size, curr_block.x:curr_block.x+block_size] = \
+                np.full( (block_size, block_size, 3), (du, dv, valid))
+
+    return opt_flow
+
+def backward_compensated_optical_flow(past_image, curr_image, block_size, search_area_radius, search_step, dist_error_method):
+    # 3 channels: du, dv and valid
+    opt_flow = np.zeros((past_image.shape[0], past_image.shape[1], 3))
+    past = BlockedImage(past_image, block_size)
+    curr = BlockedImage(curr_image, block_size)
+    for curr_block in curr.getBlocks():
+        past_block = past.blockMatch(curr_block, search_area_radius, search_step, dist_error_method)
+
+        dv = past_block.x - curr_block.x
+        du = past_block.y - curr_block.y
+        valid = 1
+
+        if opt_flow[curr_block.y:curr_block.y+block_size, curr_block.x:curr_block.x+block_size].shape == (block_size, block_size, 3):
+            opt_flow[curr_block.y:curr_block.y+block_size, curr_block.x:curr_block.x+block_size] = \
+                np.full( (block_size, block_size, 3), (du, dv, valid))
+
+    return opt_flow
+
+
 
 if __name__ == "__main__":
-    past_image = cv2.imread("../data/seq45/000045_10.png")
-    curr_image = cv2.imread("../data/seq45/000045_11.png")
+    past_path = "../data/seq45/000045_10.png"
+    curr_path = "../data/seq45/000045_11.png"
+    past_image = cv2.imread(past_path)
+    curr_image = cv2.imread(curr_path)
 
     past = BlockedImage(past_image, 5)
     curr = BlockedImage(curr_image, 5)
@@ -186,12 +224,21 @@ if __name__ == "__main__":
     """
 
     # FORWARD COMPENSATION
-    plt.figure()
-    plt.imshow( forward_compensated_image(past_image, curr_image, 20, 40, 5, "MSD") )
-    plt.show()
+    #plt.figure()
+    #plt.imshow( forward_compensated_image(past_image, curr_image, 20, 40, 5, "MSD") )
+    #plt.show()
 
     # BACKWARD COMPENSATION
-    plt.figure()
-    plt.imshow( backward_compensated_image(past_image, curr_image, 20, 40, 5, "MSD") )
-    plt.show()
+    #plt.figure()
+    #plt.imshow( backward_compensated_image(past_image, curr_image, 20, 40, 5, "MSD") )
+    #plt.show()
+
+    from utils.optical_flow import plot_optical_flow_raw
+
+    of = forward_compensated_optical_flow(past_image, curr_image, 20, 30, 5, "MSD")
+    plot_optical_flow_raw(curr_image, of, 10)
+
+    of = backward_compensated_optical_flow(past_image, curr_image, 20, 30, 5, "MSD")
+    plot_optical_flow_raw(curr_image, of, 10)
+
 
