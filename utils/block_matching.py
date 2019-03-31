@@ -88,7 +88,8 @@ class BlockedImage:
 
     def paintBlocks(self):
         for b in self.dst_blocks:
-            self.dst_image[b.y:b.y+b.block_size, b.x:b.x+b.block_size] = b.image
+            if b.image.shape == self.dst_image[b.y:b.y+b.block_size, b.x:b.x+b.block_size].shape:
+                self.dst_image[b.y:b.y+b.block_size, b.x:b.x+b.block_size] = b.image
 
         return self.dst_image
 
@@ -125,6 +126,31 @@ def show_image(image):
     plt.imshow(image, cmap='gray')
     plt.show()
 
+def forward_compensated_image(past_image, curr_image, block_size, search_area_radius, search_step, dist_error_method):
+    past = BlockedImage(past_image, block_size)
+    curr = BlockedImage(curr_image, block_size)
+    for past_block in past.getBlocks():
+        curr_block = curr.blockMatch(past_block, search_area_radius, search_step, dist_error_method)
+        #print("Current block at ({},{}) corresponds to block in past ({},{})".format(curr_block.x, curr_block.y,
+        #                                                                             past_block.x, past_block.y))
+        past_block.x = curr_block.x
+        past_block.y = curr_block.y
+        past.setBlock(past_block)
+
+    return past.paintBlocks()
+
+def backward_compensated_image(past_image, curr_image, block_size, search_area_radius, search_step, dist_error_method):
+    past = BlockedImage(past_image, block_size)
+    curr = BlockedImage(curr_image, block_size)
+    for curr_block in curr.getBlocks():
+        past_block = past.blockMatch(curr_block, search_area_radius, search_step, dist_error_method)
+        #print("Current block at ({},{}) corresponds to block in past ({},{})".format(curr_block.x, curr_block.y,
+        #                                                                             past_block.x, past_block.y))
+        curr_block.image = past_block.image
+        curr.setBlock(curr_block)
+
+    return curr.paintBlocks()
+
 
 if __name__ == "__main__":
     past_image = cv2.imread("../data/seq45/000045_10.png")
@@ -143,6 +169,8 @@ if __name__ == "__main__":
     show_image(curr.paintBlocks())
     '''
 
+    # DISTANCE MAP
+    """
     block_dists = []
     dist_method = "MSD"
     for curr_block in curr.getBlocks():
@@ -155,6 +183,15 @@ if __name__ == "__main__":
     plt.figure()
     plt.imshow(dist_img, cmap='gray')
     plt.show()
+    """
 
+    # FORWARD COMPENSATION
+    plt.figure()
+    plt.imshow( forward_compensated_image(past_image, curr_image, 20, 40, 5, "MSD") )
+    plt.show()
 
+    # BACKWARD COMPENSATION
+    plt.figure()
+    plt.imshow( backward_compensated_image(past_image, curr_image, 20, 40, 5, "MSD") )
+    plt.show()
 
