@@ -5,6 +5,7 @@ import copy
 from utils.kalman_filter import KalmanFilter, KalmanFilter_ConstantVelocity, KalmanFilter_ConstantAcceleration
 from utils.optical_flow_tracker import  OpticalFlowTracker
 import motmetrics as mm
+from paths import AICITY_DIR
 
 class TrackedObject:
     # a object with its track
@@ -114,27 +115,40 @@ class OpticalFlowTrackedObject(TrackedObject):
     # a track is a dictionary of frame_id and roi of the tracked
     #   object on the frame
 
-    def __init__(self, id, initial_image, initial_roi: ROI):
+    def __init__(self, id, initial_roi: ROI, frame_id):
         self.objectId = id
         self.track = {}
         self.track_corrected = {}
+        frame_path = AICITY_DIR.joinpath('frames',
+                                         'image-{:04d}.png'.format(frame_id))
+        initial_image = cv2.imread(str(frame_path))
         self.OF = OpticalFlowTracker(initial_image, initial_roi)
         self.color = (int(random.random() * 256),
                       int(random.random() * 256),
                       int(random.random() * 256))
+        self.first_frame = True
 
 
-    def add_frame_roi(self, frame_id, roi:ROI, image):
-        roi.objectId = self.objectId
-        r = ROI(roi.xTopLeft, roi.yTopLeft, roi.xBottomRight, roi.yBottomRight, self.objectId)
-        self.track[frame_id] = r
+    def add_frame_roi(self, frame_id, roi:ROI):
 
-        center = roi.center()
-        new_center = self.OF.predict(image)
-        self.OF.correct(image, roi)
-        raux = roi.reposition(new_center)
-        r_c = ROI(raux.xTopLeft, raux.yTopLeft, raux.xBottomRight, raux.yBottomRight, self.objectId)
-        self.track_corrected[frame_id] = r_c
+        if self.first_frame:
+            roi.objectId = self.objectId
+            r = ROI(roi.xTopLeft, roi.yTopLeft, roi.xBottomRight, roi.yBottomRight, self.objectId)
+            self.track[frame_id] = r
+            self.track_corrected[frame_id] = r
+            self.first_frame = False
+        else:
+            roi.objectId = self.objectId
+            r = ROI(roi.xTopLeft, roi.yTopLeft, roi.xBottomRight, roi.yBottomRight, self.objectId)
+            self.track[frame_id] = r
+            frame_path = AICITY_DIR.joinpath('frames',
+                                             'image-{:04d}.png'.format(frame_id))
+            image = cv2.imread(str(frame_path))
+            new_center = self.OF.predict(image, self.objectId, frame_id, False)
+            self.OF.correct(image, roi)
+            raux = roi.reposition(new_center)
+            r_c = ROI(raux.xTopLeft, raux.yTopLeft, raux.xBottomRight, raux.yBottomRight, self.objectId)
+            self.track_corrected[frame_id] = r_c
 
 class Frame:
     # collection of ROIs detected on an image frame
@@ -193,7 +207,7 @@ class ObjectTracker:
                 if self.method == "RegionOverlap":
                     obj = TrackedObject(id)
                 elif self.method == 'OpticalFlow':
-                    obj = OpticalFlowTrackedObject(id,r)
+                    obj = OpticalFlowTrackedObject(id, r, frame.get_id())
                 else:
                     obj = KalmanTrackedObject(id, r)
                 obj.add_frame_roi(frame.get_id(), r)
@@ -220,7 +234,7 @@ class ObjectTracker:
                     if self.method == "RegionOverlap":
                         obj = TrackedObject(id)
                     elif self.method == 'OpticalFlow':
-                        obj = OpticalFlowTrackedObject(id, roi)
+                        obj = OpticalFlowTrackedObject(id, roi, frame.get_id())
                     else:
                         obj = KalmanTrackedObject(id, roi)
                     obj.add_frame_roi(frame.get_id(), roi)
