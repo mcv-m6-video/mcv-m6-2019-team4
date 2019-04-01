@@ -41,6 +41,7 @@ def plot_optical_flow(image_file, flow_file):
     # plt.scatter(X[::step, ::step], Y[::step, ::step], color='r', s=2)
     plt.show()
 
+
 def plot_optical_flow_raw(image, flow, step):
     (h, w) = flow.shape[0:2]
     du = flow[:, :, 0]
@@ -547,4 +548,17 @@ def show_images(images, cols=1, titles=None, cmap='gray', scaling=1):
 
     plt.show()
 
+
 # TODO: add tests for visualization tools used
+
+def plot_optical_flow_colours(image, flow, weight):
+    """
+
+    Args:
+        weight: how much visible is the flow over the image. `0.0` for
+            invisible, 1.0 for only showing flow.
+    """
+    flow_image = flow_to_image(flow)
+    blend = cv2.addWeighted(image, 1-weight, flow_image, weight, 0)
+    plt.imshow(blend)
+    plt.show()
