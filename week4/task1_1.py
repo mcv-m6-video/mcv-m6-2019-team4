@@ -8,6 +8,7 @@ import matplotlib.colors as cl
 import random
 
 from block_matching import BlockedImage
+from optical_flow import flow_error
 from paths import DATA_DIR
 
 
@@ -118,45 +119,40 @@ def compute_optical_flow(current, past, config):
         past: past frame CV2.Image
     """
     return (
-        forward_compensated_optical_flow(past_image, curr_image, **config),
-        backward_compensated_optical_flow(past_image, curr_image, **config),
+        forward_compensated_optical_flow(past, current, **config),
+        backward_compensated_optical_flow(past, current, **config),
     )
 
 
-def evaluate_optical_flow():
-    from utils import optical_flow
-    from evaluation import optical_flow as flow_eval
-    from paths import DATA_DIR
+def evaluate_optical_flow(gt: np.array, pred: np.array):
+    """ Compute metrics for non-occluded pixels.
 
-    # Path to data
-    flow_noc_path = DATA_DIR.joinpath(
-        'seq45/gt/noc/000045_10.png')  # only non-occluded pixels
-    flow_val_path = DATA_DIR.joinpath(
-        'seq157/gt/occ/000157_10.png')  # ALL valid (non-occ+occluded) pixels
-    # Load the optical flow estimated via Lucas-Kanade
-    flow_est_path = DATA_DIR.joinpath('seq45/LKflow_000045_10.png')
+    Returns:
+        MSEN, PEPN
+    """
+    gt_value = 0  # reject 0's in validity masks
 
-    print("Testing ALL metrics for seq. 45 KITTI 2012...\n")
-    flow_eval.eval_sequence(flow_noc_path,
-                            flow_est_path,
-                            flow_val_path)
-    print("Testing finished successfully")
+    tu = gt[:, :, 0]
+    tv = gt[:, :, 1]
+    mask = gt[:, :, 2]
+    u = pred[:, :, 0]
+    v = pred[:, :, 1]
+
+    msen = flow_error(tu, tv, u, v, mask, gt_value, 'MSEN')
+    pepn = flow_error(tu, tv, u, v, mask, gt_value, 'PEPN', tau=3)
+
+    return msen, pepn
 
 
 if __name__ == "__main__":
-    from utils.optical_flow import (
-        plot_optical_flow_raw,
-        plot_optical_flow_colours,
-        save_flow_image,
-        flow_to_image,
-        write_flow,
-        read_flow,
-    )
+    import time
+    from utils import optical_flow
 
     # Convert GT to image for visualization
     gt_path = "../data/seq45/gt/noc/000045_10.png"
-    gt = read_flow(gt_path).transpose((1, 0, 2))
-    save_flow_image(gt, 'gt.png')
+    gt = optical_flow.read_flow(gt_path)
+    gt = gt.transpose((1, 0, 2))
+    optical_flow.save_flow_image(gt, 'gt.png')
 
     past_path = '../data/seq45/000045_10.png'
     curr_path = '../data/seq45/000045_11.png'
@@ -164,19 +160,31 @@ if __name__ == "__main__":
     curr_image = cv2.imread(curr_path)
 
     config = dict(
-        block_size=20,
         search_area_radius=30,
+        block_size=20,
         search_step=5,
         dist_error_method='MSD',
         scan_method='linear',
     )
 
-    of_fwd, of_bwd = compute_optical_flow(current=curr_path,
-                                          past=past_path,
+    start = time.clock()
+    of_fwd, of_bwd = compute_optical_flow(current=curr_image,
+                                          past=past_image,
                                           config=config)
+    runtime = time.clock() - start
 
-    plot_optical_flow_raw(curr_image, of_fwd, 10)
-    plot_optical_flow_raw(curr_image, of_bwd, 10)
+    msen, pepn = evaluate_optical_flow(gt, of_fwd)
 
-    save_flow_image(of_fwd, format_filename('fwd', config, 'png'))
-    save_flow_image(of_bwd, format_filename('bwd', config, 'png'))
+    print(
+        f'Computing optical flow...\n'
+        f'Config {config}\n'
+        f'MSEN: {msen:.2f}\n'
+        f'PEPN: {pepn:.2f}\n'
+        f'Runtime computing FWD and BWD: {runtime:.3g} seconds'
+    )
+
+    optical_flow.save_flow_image(of_fwd, format_filename('fwd', config, 'png'))
+    optical_flow.save_flow_image(of_bwd, format_filename('bwd', config, 'png'))
+
+    # plot_optical_flow_raw(curr_image, of_fwd, 10)
+    # plot_optical_flow_raw(curr_image, of_bwd, 10)
