@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import cv2
 import numpy as np
 import math
@@ -108,8 +110,17 @@ def format_filename(prefix: str, config: dict, extension: str) -> str:
     )
 
 
-def compute_optical_flow():
-    pass
+def compute_optical_flow(current, past, config):
+    """ Computes Forward and Backward optical flow
+
+    Args:
+        current: current frame CV2.Image
+        past: past frame CV2.Image
+    """
+    return (
+        forward_compensated_optical_flow(past_image, curr_image, **config),
+        backward_compensated_optical_flow(past_image, curr_image, **config),
+    )
 
 
 def evaluate_optical_flow():
@@ -147,8 +158,8 @@ if __name__ == "__main__":
     gt = read_flow(gt_path).transpose((1, 0, 2))
     save_flow_image(gt, 'gt.png')
 
-    past_path = "../data/seq45/000045_10.png"
-    curr_path = "../data/seq45/000045_11.png"
+    past_path = '../data/seq45/000045_10.png'
+    curr_path = '../data/seq45/000045_11.png'
     past_image = cv2.imread(past_path)
     curr_image = cv2.imread(curr_path)
 
@@ -160,23 +171,12 @@ if __name__ == "__main__":
         scan_method='linear',
     )
 
-    past = BlockedImage(past_image, 5, config['scan_method'])
-    curr = BlockedImage(curr_image, 5, config['scan_method'])
+    of_fwd, of_bwd = compute_optical_flow(current=curr_path,
+                                          past=past_path,
+                                          config=config)
 
-    # FORWARD COMPENSATION
-    of = forward_compensated_optical_flow(
-        past_image,
-        curr_image,
-        **config,
-    )
-    plot_optical_flow_raw(curr_image, of, 10)
-    save_flow_image(of, format_filename('fwd', config, 'png'))
+    plot_optical_flow_raw(curr_image, of_fwd, 10)
+    plot_optical_flow_raw(curr_image, of_bwd, 10)
 
-    # BACKWARD COMPENSATION
-    of = backward_compensated_optical_flow(
-        past_image,
-        curr_image,
-        **config,
-    )
-    plot_optical_flow_raw(curr_image, of, 10)
-    save_flow_image(of, format_filename('bwd', config, 'png'))
+    save_flow_image(of_fwd, format_filename('fwd', config, 'png'))
+    save_flow_image(of_bwd, format_filename('bwd', config, 'png'))
