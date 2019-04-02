@@ -96,13 +96,31 @@ def backward_compensated_optical_flow(past_image, curr_image, block_size,
     return opt_flow
 
 
+def format_filename(prefix: str, config: dict, extension: str) -> str:
+    return (
+        f"{prefix}_"
+        f"{config['search_area_radius']}_"
+        f"{config['block_size']}_"
+        f"{config['search_step']}_"
+        f"{config['dist_error_method']}_"
+        f"{config['scan_method']}.{extension}"
+    )
+
+
 if __name__ == "__main__":
     from utils.optical_flow import (
-    plot_optical_flow_raw,
-    plot_optical_flow_colours,
-    save_flow_image,
-    flow_to_image,
-    write_flow)
+        plot_optical_flow_raw,
+        plot_optical_flow_colours,
+        save_flow_image,
+        flow_to_image,
+        write_flow,
+        read_flow,
+    )
+
+    # Convert GT to image for visualization
+    gt_path = "../data/seq45/gt/noc/000045_10.png"
+    gt = read_flow(gt_path).transpose((1, 0, 2))
+    save_flow_image(gt, 'gt.png')
 
     past_path = "../data/seq45/000045_10.png"
     curr_path = "../data/seq45/000045_11.png"
@@ -114,7 +132,7 @@ if __name__ == "__main__":
         search_area_radius=30,
         search_step=5,
         dist_error_method='MSD',
-        scan_method='centered',
+        scan_method='linear',
     )
 
     past = BlockedImage(past_image, 5, config['scan_method'])
@@ -127,7 +145,7 @@ if __name__ == "__main__":
         **config,
     )
     plot_optical_flow_raw(curr_image, of, 10)
-    write_flow(of, 'fw.png')
+    save_flow_image(of, format_filename('fwd', config, 'png'))
 
     # BACKWARD COMPENSATION
     of = backward_compensated_optical_flow(
@@ -136,4 +154,4 @@ if __name__ == "__main__":
         **config,
     )
     plot_optical_flow_raw(curr_image, of, 10)
-    write_flow(of, 'bw.png')
+    save_flow_image(of, format_filename('bwd', config, 'png'))
