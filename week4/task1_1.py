@@ -6,6 +6,7 @@ import matplotlib.colors as cl
 import random
 
 from block_matching import BlockedImage
+from paths import DATA_DIR
 
 
 def show_image(image):
@@ -105,6 +106,30 @@ def format_filename(prefix: str, config: dict, extension: str) -> str:
         f"{config['dist_error_method']}_"
         f"{config['scan_method']}.{extension}"
     )
+
+
+def compute_optical_flow():
+    pass
+
+
+def evaluate_optical_flow():
+    from utils import optical_flow
+    from evaluation import optical_flow as flow_eval
+    from paths import DATA_DIR
+
+    # Path to data
+    flow_noc_path = DATA_DIR.joinpath(
+        'seq45/gt/noc/000045_10.png')  # only non-occluded pixels
+    flow_val_path = DATA_DIR.joinpath(
+        'seq157/gt/occ/000157_10.png')  # ALL valid (non-occ+occluded) pixels
+    # Load the optical flow estimated via Lucas-Kanade
+    flow_est_path = DATA_DIR.joinpath('seq45/LKflow_000045_10.png')
+
+    print("Testing ALL metrics for seq. 45 KITTI 2012...\n")
+    flow_eval.eval_sequence(flow_noc_path,
+                            flow_est_path,
+                            flow_val_path)
+    print("Testing finished successfully")
 
 
 if __name__ == "__main__":
