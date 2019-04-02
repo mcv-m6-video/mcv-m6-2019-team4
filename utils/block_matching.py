@@ -68,10 +68,12 @@ class BlockedImage:
         self.block_match_method = block_match_options[method]
 
         self.src_blocks = []
-        for r in range(0, self.src_image.shape[0] - self.block_size,
+        for r in range(0,
+                       self.src_image.shape[0] - self.block_size,
                        self.block_size):
             self.block_rows += 1
-            for c in range(0, self.src_image.shape[1] - self.block_size,
+            for c in range(0,
+                           self.src_image.shape[1] - self.block_size,
                            self.block_size):
                 self.src_blocks.append(Block(
                     self.block_size,

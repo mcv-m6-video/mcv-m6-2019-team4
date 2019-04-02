@@ -8,7 +8,8 @@ import matplotlib.colors as cl
 import random
 
 from block_matching import BlockedImage
-from optical_flow import flow_error
+from utils import optical_flow as utils_of
+from evaluation import optical_flow as eval_of
 from paths import DATA_DIR
 
 
@@ -21,8 +22,10 @@ def show_image(image):
 def forward_compensated_image(past_image, curr_image, block_size,
                               search_area_radius, search_step,
                               dist_error_method, scan_method):
+
     past = BlockedImage(past_image, block_size, scan_method)
     curr = BlockedImage(curr_image, block_size, scan_method)
+
     for past_block in past.getBlocks():
         curr_block = curr.blockMatch(past_block, search_area_radius,
                                      search_step, dist_error_method)
@@ -38,8 +41,10 @@ def forward_compensated_image(past_image, curr_image, block_size,
 def backward_compensated_image(past_image, curr_image, block_size,
                                search_area_radius, search_step,
                                dist_error_method, scan_method):
+
     past = BlockedImage(past_image, block_size, scan_method)
     curr = BlockedImage(curr_image, block_size, scan_method)
+
     for curr_block in curr.getBlocks():
         past_block = past.blockMatch(curr_block, search_area_radius,
                                      search_step, dist_error_method)
@@ -58,6 +63,7 @@ def forward_compensated_optical_flow(past_image, curr_image, block_size,
     opt_flow = np.zeros((past_image.shape[0], past_image.shape[1], 3))
     past = BlockedImage(past_image, block_size, scan_method)
     curr = BlockedImage(curr_image, block_size, scan_method)
+
     for past_block in past.getBlocks():
         curr_block = curr.blockMatch(past_block, search_area_radius,
                                      search_step, dist_error_method)
@@ -132,14 +138,19 @@ def evaluate_optical_flow(gt: np.array, pred: np.array):
     """
     gt_value = 0  # reject 0's in validity masks
 
-    tu = gt[:, :, 0]
+    tu: np.ndarray = gt[:, :, 0]
     tv = gt[:, :, 1]
-    mask = gt[:, :, 2]
+    mask = gt[:, :, 2].astype(np.uint64)
     u = pred[:, :, 0]
     v = pred[:, :, 1]
 
-    msen = flow_error(tu, tv, u, v, mask, gt_value, 'MSEN')
-    pepn = flow_error(tu, tv, u, v, mask, gt_value, 'PEPN', tau=3)
+    # print(f'maxmin: {max(tu.flatten()), min(tu.flatten())}')
+    # print(f'maxmin: {max(u.flatten()), min(u.flatten())}')
+    # print(f'maxmin: {max(tv.flatten()), min(tv.flatten())}')
+    # print(f'maxmin: {max(v.flatten()), min(v.flatten())}')
+
+    msen = eval_of.flow_error(tu, tv, u, v, mask, gt_value, method='MSEN')
+    pepn = eval_of.flow_error(tu, tv, u, v, mask, gt_value, method='PEPN')
 
     return msen, pepn
 
@@ -148,7 +159,7 @@ if __name__ == "__main__":
     import time
     from utils import optical_flow
 
-    # Convert GT to image for visualization
+    # Convert GT to image for visualization(
     gt_path = "../data/seq45/gt/noc/000045_10.png"
     gt = optical_flow.read_flow(gt_path)
     gt = gt.transpose((1, 0, 2))
@@ -164,7 +175,8 @@ if __name__ == "__main__":
         block_size=20,
         search_step=5,
         dist_error_method='MSD',
-        scan_method='linear',
+        # scan_method='linear',
+        scan_method='centered',
     )
 
     start = time.clock()
@@ -183,8 +195,13 @@ if __name__ == "__main__":
         f'Runtime computing FWD and BWD: {runtime:.3g} seconds'
     )
 
-    optical_flow.save_flow_image(of_fwd, format_filename('fwd', config, 'png'))
-    optical_flow.save_flow_image(of_bwd, format_filename('bwd', config, 'png'))
+    # optical_flow.save_flow_image(of_fwd, format_filename('fwd', config, 'png'))
+    # optical_flow.save_flow_image(of_bwd, format_filename('bwd', config, 'png'))
 
-    # plot_optical_flow_raw(curr_image, of_fwd, 10)
-    # plot_optical_flow_raw(curr_image, of_bwd, 10)
+    # utils_of.plot_optical_flow_raw(curr_image, of_fwd, 10)
+    # utils_of.plot_optical_flow_raw(curr_image, of_bwd, 10)
+    utils_of.plot_optical_flow_raw(curr_image, gt, 10)
+
+    # lk = utils_of.read_flow('../data/seq45/LKflow_000045_10.png')
+    # lk = lk.transpose((1, 0, 2))
+    # utils_of.plot_optical_flow_raw(curr_image, lk, 1)
