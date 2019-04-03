@@ -22,7 +22,6 @@ def show_image(image):
 def forward_compensated_image(past_image, curr_image, block_size,
                               search_area_radius, search_step,
                               dist_error_method, scan_method):
-
     past = BlockedImage(past_image, block_size, scan_method)
     curr = BlockedImage(curr_image, block_size, scan_method)
 
@@ -41,7 +40,6 @@ def forward_compensated_image(past_image, curr_image, block_size,
 def backward_compensated_image(past_image, curr_image, block_size,
                                search_area_radius, search_step,
                                dist_error_method, scan_method):
-
     past = BlockedImage(past_image, block_size, scan_method)
     curr = BlockedImage(curr_image, block_size, scan_method)
 
@@ -215,8 +213,18 @@ if __name__ == "__main__":
     optical_flow.save_flow_image(of_fwd, format_filename('fwd', config, 'png'))
     optical_flow.save_flow_image(of_bwd, format_filename('bwd', config, 'png'))
 
-    # utils_of.plot_optical_flow_raw(curr_image, of_fwd, 10)
-    # utils_of.plot_optical_flow_raw(curr_image, of_bwd, 10)
+    utils_of.plot_optical_flow_raw(
+        curr_image,
+        of_fwd,
+        10,
+        Path(format_filename('img_fwd', config, 'png'))
+    )
+    utils_of.plot_optical_flow_raw(
+        curr_image,
+        of_bwd,
+        10,
+        Path(format_filename('img_bwd', config, 'png'))
+    )
     utils_of.plot_optical_flow_raw(curr_image, gt, 10)
 
     # lk = utils_of.read_flow('../data/seq45/LKflow_000045_10.png')

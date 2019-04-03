@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Optional
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -42,7 +45,11 @@ def plot_optical_flow(image_file, flow_file):
     plt.show()
 
 
-def plot_optical_flow_raw(image, flow, step):
+def plot_optical_flow_raw(image, flow, step, filename: Optional[Path] = None):
+    """ Plots the optical flow overimposed in an image
+
+    To save the plot, set the filename argument
+    """
     (h, w) = flow.shape[0:2]
     du = flow[:, :, 0]
     dv = flow[:, :, 1]
@@ -72,6 +79,8 @@ def plot_optical_flow_raw(image, flow, step):
         scale=.7
     )
     # plt.scatter(X[::step, ::step], Y[::step, ::step], color='r', s=2)
+    if filename:
+        plt.savefig(str(filename))
     plt.show()
 
 
