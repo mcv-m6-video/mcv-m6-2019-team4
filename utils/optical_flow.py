@@ -559,6 +559,6 @@ def plot_optical_flow_colours(image, flow, weight):
             invisible, 1.0 for only showing flow.
     """
     flow_image = flow_to_image(flow)
-    blend = cv2.addWeighted(image, 1-weight, flow_image, weight, 0)
+    blend = cv2.addWeighted(image, 1 - weight, flow_image, weight, 0)
     plt.imshow(blend)
     plt.show()

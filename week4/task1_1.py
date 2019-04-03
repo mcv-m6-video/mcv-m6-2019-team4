@@ -175,8 +175,15 @@ if __name__ == "__main__":
         block_size=20,
         search_step=5,
         dist_error_method='MSD',
-        # scan_method='linear',
         scan_method='centered',
+    )
+
+    config = dict(
+        search_area_radius=30,
+        block_size=20,
+        search_step=None,
+        dist_error_method=None,
+        scan_method='ncc',
     )
 
     start = time.clock()
@@ -195,8 +202,18 @@ if __name__ == "__main__":
         f'Runtime computing FWD and BWD: {runtime:.3g} seconds'
     )
 
-    # optical_flow.save_flow_image(of_fwd, format_filename('fwd', config, 'png'))
-    # optical_flow.save_flow_image(of_bwd, format_filename('bwd', config, 'png'))
+    msen, pepn = evaluate_optical_flow(gt, of_bwd)
+
+    print(
+        f'Computing optical flow...\n'
+        f'Config {config}\n'
+        f'MSEN: {msen:.2f}\n'
+        f'PEPN: {pepn:.2f}\n'
+        f'Runtime computing FWD and BWD: {runtime:.3g} seconds'
+    )
+
+    optical_flow.save_flow_image(of_fwd, format_filename('fwd', config, 'png'))
+    optical_flow.save_flow_image(of_bwd, format_filename('bwd', config, 'png'))
 
     # utils_of.plot_optical_flow_raw(curr_image, of_fwd, 10)
     # utils_of.plot_optical_flow_raw(curr_image, of_bwd, 10)

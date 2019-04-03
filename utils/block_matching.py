@@ -23,10 +23,17 @@ class Block:
         # by several methods
 
         if self.image.shape != other.image.shape:
-            return np.Infinity
+            dist = np.Infinity
 
-        if method == "MSD":
+        elif method == "MSD":
             dist = np.mean((self.image - other.image) ** 2)
+
+        elif method == "NCC":
+            res = cv2.matchTemplate(image=self.image,
+                                    templ=other.image,
+                                    method=cv2.TM_CCORR_NORMED)
+            _, max_val, _, max_loc = cv2.minMaxLoc(res)
+            dist = 1 - max_val
 
         return dist
 
@@ -64,6 +71,7 @@ class BlockedImage:
         block_match_options = {
             'linear': self.blockMatchLinear,
             'centered': self.blockMatchCentered,
+            'ncc': self.blockMatchNCC,
         }
         self.block_match_method = block_match_options[method]
 
@@ -118,6 +126,57 @@ class BlockedImage:
 
     def src2dst(self):
         self.dst_blocks = self.src_blocks
+
+    def blockMatchNCC(self, block, window_radius, *args):
+        """ Block match using normed cross-correlation """
+        y_block_center = block.y + math.ceil(block.block_size / 2)
+        x_block_center = block.x + math.ceil(block.block_size / 2)
+
+        col_start = max(0, x_block_center - window_radius)
+        col_end = x_block_center + window_radius
+        row_start = max(0, y_block_center - window_radius)
+        row_end = y_block_center + window_radius
+
+        origin = (col_start, row_start)
+        search_window = self.src_image[row_start:row_end, col_start:col_end]
+        res = cv2.matchTemplate(image=search_window,
+                                templ=block.image,
+                                method=cv2.TM_CCORR_NORMED)
+        _, max_val, _, max_loc = cv2.minMaxLoc(res)
+        # dist = 1 - max_val
+
+        top_left = max_loc
+        bottom_right = (
+            top_left[0] + block.block_size,
+            top_left[1] + block.block_size,
+        )
+
+        top_left_abs = (
+            origin[0] + top_left[0],
+            origin[1] + top_left[1],
+        )
+        bottom_right_abs = (
+            origin[0] + bottom_right[0],
+            origin[1] + bottom_right[1],
+        )
+
+        best_image: np.array = search_window[
+                               top_left[1]:bottom_right[1],
+                               top_left[0]: bottom_right[0],
+                               ]
+        # best_imag: np.array = self.src_image[
+        #                        top_left_abs[1]:bottom_right_abs[1],
+        #                        top_left_abs[0]: bottom_right_abs[0],
+        #                        ]
+        # assert 0 == np.sum(best_imag.flatten() - best_image.flatten())
+
+        best = Block(
+            block_size=block.block_size,
+            x=top_left_abs[0],
+            y=top_left_abs[1],
+            image=best_image,
+        )
+        return best
 
     def blockMatchCentered(self, block, window_radius, step, dist_method):
         """ Find best match scanning from center to outside
