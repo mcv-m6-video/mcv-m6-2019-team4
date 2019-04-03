@@ -132,7 +132,7 @@ def evaluate_optical_flow(gt: np.array, pred: np.array):
     """ Compute metrics for non-occluded pixels.
 
     Returns:
-        MSEN, PEPN
+        EPE, MSEN, PEPN
     """
     gt_value = 0  # reject 0's in validity masks
 
@@ -147,10 +147,13 @@ def evaluate_optical_flow(gt: np.array, pred: np.array):
     # print(f'maxmin: {max(tv.flatten()), min(tv.flatten())}')
     # print(f'maxmin: {max(v.flatten()), min(v.flatten())}')
 
+    # BUG (jonatan@adsmurai.com) calling the next func affects to OF visualization
+    # epe = eval_of.flow_error(tu, tv, u, v, mask, gt_value, method='EPE')
+    epe = -1
     msen = eval_of.flow_error(tu, tv, u, v, mask, gt_value, method='MSEN')
     pepn = eval_of.flow_error(tu, tv, u, v, mask, gt_value, method='PEPN')
 
-    return msen, pepn
+    return epe, msen, pepn
 
 
 if __name__ == "__main__":
@@ -190,21 +193,23 @@ if __name__ == "__main__":
                                           config=config)
     runtime = time.clock() - start
 
-    msen, pepn = evaluate_optical_flow(gt, of_fwd)
+    epe, msen, pepn = evaluate_optical_flow(gt, of_fwd)
 
     print(
         f'Computing optical flow...\n'
         f'Config {config}\n'
+        f'EPE: {epe:.2f}\n'
         f'MSEN: {msen:.2f}\n'
         f'PEPN: {pepn:.2f}\n'
         f'Runtime computing FWD and BWD: {runtime:.3g} seconds'
     )
 
-    msen, pepn = evaluate_optical_flow(gt, of_bwd)
+    epe, msen, pepn = evaluate_optical_flow(gt, of_bwd)
 
     print(
         f'Computing optical flow...\n'
         f'Config {config}\n'
+        f'EPE: {epe:.2f}\n'
         f'MSEN: {msen:.2f}\n'
         f'PEPN: {pepn:.2f}\n'
         f'Runtime computing FWD and BWD: {runtime:.3g} seconds'

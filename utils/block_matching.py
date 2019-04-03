@@ -34,6 +34,8 @@ class Block:
                                     method=cv2.TM_CCORR_NORMED)
             _, max_val, _, max_loc = cv2.minMaxLoc(res)
             dist = 1 - max_val
+        else:
+            raise NotImplementedError
 
         return dist
 
