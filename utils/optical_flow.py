@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Optional
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,7 +19,7 @@ def plot_optical_flow(image_file, flow_file):
     V = dv * valid
     M = np.hypot(U, V)
 
-    X, Y = np.meshgrid(np.arange(0, w), np.arange(0, h))
+    Y, X = np.meshgrid(np.arange(0, w), np.arange(0, h))
 
     step = 10
     plt.figure()
@@ -39,6 +42,45 @@ def plot_optical_flow(image_file, flow_file):
         scale=.7
     )
     # plt.scatter(X[::step, ::step], Y[::step, ::step], color='r', s=2)
+    plt.show()
+
+
+def plot_optical_flow_raw(image, flow, step, filename: Optional[Path] = None):
+    """ Plots the optical flow overimposed in an image
+
+    To save the plot, set the filename argument
+    """
+    (h, w) = flow.shape[0:2]
+    du = flow[:, :, 0]
+    dv = flow[:, :, 1]
+    valid = flow[:, :, 2]
+    U = du * valid
+    V = dv * valid
+    M = np.hypot(U, V)
+
+    X, Y = np.meshgrid(np.arange(0, w), np.arange(0, h))
+
+    plt.figure()
+    # plt.title("pivot='mid'; every third arrow; units='inches'")
+
+    plt.imshow(image, cmap='gray')
+
+    plt.quiver(
+        X[::step, ::step],
+        Y[::step, ::step],
+        U[::step, ::step],
+        V[::step, ::step],
+        M[::step, ::step],
+        pivot='tail',
+        units='xy',
+        color='r',
+        angles='xy',
+        scale_units='xy',
+        scale=.7
+    )
+    # plt.scatter(X[::step, ::step], Y[::step, ::step], color='r', s=2)
+    if filename:
+        plt.savefig(str(filename))
     plt.show()
 
 
@@ -515,4 +557,17 @@ def show_images(images, cols=1, titles=None, cmap='gray', scaling=1):
 
     plt.show()
 
+
 # TODO: add tests for visualization tools used
+
+def plot_optical_flow_colours(image, flow, weight):
+    """
+
+    Args:
+        weight: how much visible is the flow over the image. `0.0` for
+            invisible, 1.0 for only showing flow.
+    """
+    flow_image = flow_to_image(flow)
+    blend = cv2.addWeighted(image, 1 - weight, flow_image, weight, 0)
+    plt.imshow(blend)
+    plt.show()
