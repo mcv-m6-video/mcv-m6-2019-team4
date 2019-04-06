@@ -59,7 +59,7 @@ class OpticalFlowTracker(object):
 
     def estimate_center(self, flow):
 
-        return [[0],[0]]
+        #return [[0],[0]]
         #if flow == None:
         #    return [[0], [0]]
         #u = flow[:, :, 0]
