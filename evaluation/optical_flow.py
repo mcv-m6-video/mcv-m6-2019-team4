@@ -84,7 +84,7 @@ def squared_difference_noc(tu, tv, u, v, mask, plot=0, method='MSEN'):
     # Compute squared difference
     E_du = tu - u
     E_dv = tv - v
-    E = np.sqrt(E_du ** 2 + E_dv ** 2)
+    E = E_du ** 2 + E_dv ** 2
 
     # Set occluded pixels error to 0
     E[mask == 0] = 0
