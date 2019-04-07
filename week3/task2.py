@@ -9,18 +9,20 @@ import matplotlib.pyplot as plt
 import motmetrics as mm
 
 
-def load_detections_txt(detections_file, gtFormat, confidence_th=.2):
+def load_detections_txt(detections_file, gtFormat, confidence_th=.2, isGT = False):
     detector = detection_gt_extractor.detectionExtractorGT(detections_file, gtFormat, confidence_th)
     # frame objects creation
-    frame_dict = {i: Frame(i) for i in range(1,detector.getGTNFrames())}
+    frame_dict = {i: Frame(i) for i in range(detector.getFirstFrame(),detector.getLastFrame())}
 
     # filling frames with ROIs
     for i in frame_dict:
         for r in detector.getAllFrame(i):
-            frame_dict[i].add_ROI( ROI(r[2], r[3], r[4], r[5]) )
+            if isGT:
+                frame_dict[i].add_ROI(ROI(r[2], r[3], r[4], r[5], r[1]))
+            else:
+                frame_dict[i].add_ROI( ROI(r[2], r[3], r[4], r[5]) )
 
     return frame_dict
-
 
 def load_annotations(annotations_file):
     annotations = annotation_parser.annotationsParser(annotations_file)

@@ -53,8 +53,13 @@ def run_week3_tasks():
     task2_1.overlap_tracking()
     task2_2.kalman_tracking()
 
+def run_week5_tasks():
+    from week5 import task2
+
+    task2.MultiTrackMultiCamera()
 
 if __name__ == '__main__':
     #run_week1_tasks()
     #run_week2_tasks()
-    run_week3_tasks()
+    #run_week3_tasks()
+    run_week5_tasks()

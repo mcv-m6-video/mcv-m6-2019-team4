@@ -1,3 +1,5 @@
+import numpy as np
+
 class detectionExtractorGT():
 
     def __init__(self, filePath, gtFormat="LTWH", confidence_th=.2):
@@ -16,11 +18,11 @@ class detectionExtractorGT():
                 data = [float(elt.strip()) for elt in line.split(',')]
                 if self.gtFormat == "LTWH":
                     # format data: [frame, ID, left, top, width, height, 1, -1, -1, -1]
-                    data = [data[0], -1, data[2], data[3], data[2] + data[4],
+                    data = [data[0], int(data[1]), data[2], data[3], data[2] + data[4],
                             data[3] + data[5], data[6]]
                 elif self.gtFormat == "TLBR":
                     # format data: [frame, ID, left, top, right, bottom, 1, -1, -1, -1]
-                    data = [data[0], -1, data[2], data[3], data[4],
+                    data = [data[0], int(data[1]), data[2], data[3], data[4],
                             data[5], data[6]]
 
                 if data[-1] >= self.confidence_th:
@@ -56,3 +58,9 @@ class detectionExtractorGT():
 
     def getAllFrame(self, i):
         return [f for f in self.gt if f[0] == i]
+
+    def getFirstFrame(self):
+        return int(np.min(np.array([x[0] for x in self.gt])))
+
+    def getLastFrame(self):
+        return int(np.max(np.array([x[0] for x in self.gt])))

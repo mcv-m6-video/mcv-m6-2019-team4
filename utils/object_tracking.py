@@ -181,6 +181,7 @@ class ObjectTracker:
 
         # create a new TrackedObject for each ROI
         for r in frame.get_ROIs():
+
             if r.objectId in self.trackedObjects:
                 obj = self.trackedObjects[r.objectId]
                 obj.add_frame_roi(frame.get_id(), r)
@@ -389,27 +390,31 @@ class ObjectTracker:
                 print('\tobject {} at position {}'.format(roi.objectId, roi))
 
     def draw_frame(self, frame_number, image):
+        if image is None:
+            return image
+
         overlay = image.copy()
 
-        for roi in self.trackedFrames[frame_number].get_ROIs():
-            color = self.trackedObjects[roi.objectId].color
+        if frame_number in self.trackedFrames:
+            for roi in self.trackedFrames[frame_number].get_ROIs():
+                color = self.trackedObjects[roi.objectId].color
 
-            cv2.rectangle(
-                overlay,
-                (int(roi.xTopLeft), int(roi.yTopLeft)),
-                (int(roi.xBottomRight), int(roi.yBottomRight)),
-                color,
-                -1
-            )
+                cv2.rectangle(
+                    overlay,
+                    (int(roi.xTopLeft), int(roi.yTopLeft)),
+                    (int(roi.xBottomRight), int(roi.yBottomRight)),
+                    color,
+                    -1
+                )
 
-            #roi_center = (int(roi.xTopLeft + (abs(roi.xTopLeft - roi.xBottomRight) / 2.0)),
-            #              int(roi.yTopLeft + (abs(roi.yTopLeft - roi.yBottomRight) / 2.0)) )
-            text_pos = (int(roi.xTopLeft+10), int(roi.yTopLeft+20))
+                #roi_center = (int(roi.xTopLeft + (abs(roi.xTopLeft - roi.xBottomRight) / 2.0)),
+                #              int(roi.yTopLeft + (abs(roi.yTopLeft - roi.yBottomRight) / 2.0)) )
+                text_pos = (int(roi.xTopLeft+10), int(roi.yTopLeft+20))
 
-            cv2.putText(image, str(roi.objectId), text_pos, cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, .5, (0,0,0), 2)
+                cv2.putText(image, str(roi.objectId), text_pos, cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, .5, (0,0,0), 2)
 
-        alpha = .7
-        image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
+            alpha = .7
+            image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
         return image
 
@@ -498,11 +503,15 @@ class ObjectTracker:
                             r.track_corrected[id].xBottomRight,
                             r.track_corrected[id].yBottomRight] for r in aux]
 
+            if id in other.trackedFrames.keys():
 
+                gtObjects = [r.objectId for r in other.trackedFrames[id].get_ROIs()]
+                gtROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in
+                          other.trackedFrames[id].get_ROIs()]
+            else:
+                gtObjects = []
+                gtROIs = []
 
-            gtObjects = [r.objectId for r in other.trackedFrames[id].get_ROIs()]
-            gtROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in
-                      other.trackedFrames[id].get_ROIs()]
 
             dists = mm.distances.iou_matrix(gtROIs, detROIs, max_iou=0.5)
             acc.update(gtObjects, detObjects, dists, id)

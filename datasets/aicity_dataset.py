@@ -6,7 +6,7 @@ import PIL.Image
 import numpy as np
 import xmltodict
 
-import detections_loader
+import utils.detections_loader
 from paths import AICITY_DIR, AICITY_ANNOTATIONS, PROJECT_ROOT
 
 
