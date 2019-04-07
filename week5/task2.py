@@ -33,17 +33,21 @@ def MultiTrackMultiCamera():
 
     trackers = {}
 
+    trackingMethod = "RegionOverlap"
+    detectionMethod = "yolo3"
+
     for c in seq.getCameras():
         cam = seq.getCamera(c)
         print("Camera {}".format(c))
 
         # Load detections
-        untracked_frames = load_detections_txt(cam.getDetectionFile("yolo3"), "LTWH", .8)
-        method = "RegionOverlap"
-        tracker = ObjectTracker(method)
+        untracked_frames = load_detections_txt(cam.getDetectionFile(detectionMethod), "LTWH", .8)
+        tracker = ObjectTracker(trackingMethod)
         for id, frame in untracked_frames.items():
             #print("Tracking objects in frame {}".format(id))
             tracker.process_frame(frame)
+
+        tracker.removeStaticObjects()
 
         #make_video_from_tracker(tracker, cam, "test.avi")
 

@@ -166,6 +166,12 @@ class Frame:
     def get_ROIs(self):
         return self.ROIs
 
+    def remove_object(self, id):
+        rois = [r for r in self.ROIs if r.objectId == id]
+        for r in self.ROIs:
+            if r.objectId == id:
+                self.ROIs.remove(r)
+
 class ObjectTracker:
     # class that tracks objects along a list of frames
 
@@ -521,3 +527,19 @@ class ObjectTracker:
 
         return acc
 
+
+    def removeStaticObjects(self, dist_threshold_px=20):
+        toDelete = []
+        for obj in self.trackedObjects:
+            track_frames = sorted(self.trackedObjects[obj].get_track().keys())
+            fr = self.trackedObjects[obj].get_track()[track_frames[0]]
+            lr = self.trackedObjects[obj].get_track()[track_frames[-1]]
+
+            if (abs(fr.xTopLeft-lr.xTopLeft) < dist_threshold_px) and (abs(fr.yTopLeft - lr.yTopLeft) < dist_threshold_px) and (abs(fr.xBottomRight - lr.xBottomRight) < dist_threshold_px) and (abs(fr.yBottomRight - lr.yBottomRight) < dist_threshold_px):
+                toDelete.append(obj)
+
+        for id in toDelete:
+            self.trackedObjects.pop(id)
+
+            for f in self.trackedFrames:
+                self.trackedFrames[f].remove_object(id)
