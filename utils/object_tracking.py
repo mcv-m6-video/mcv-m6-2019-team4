@@ -27,6 +27,12 @@ class TrackedObject:
     def get_track(self):
         return self.track
 
+    def drawObjectVideo(self):
+        for frame_id, roi in self.track.items():
+            if not roi.image is None:
+                cv2.imshow("Image", roi.image)
+                cv2.waitKey(1)
+
 class ROI:
     # region of interest of a detected object
     # may or may not have an object id associated
@@ -37,6 +43,7 @@ class ROI:
         self.xBottomRight = xBottomRight
         self.yBottomRight = yBottomRight
         self.objectId = objectId
+        self.image = None
 
     def __str__(self):
         return '{} {} {} {}'.format(self.xTopLeft, self.yTopLeft, self.xBottomRight, self.yBottomRight)
@@ -75,6 +82,14 @@ class ROI:
         r.xBottomRight = center[0][0] + w / 2
         r.yBottomRight = center[1][0] + h / 2
         return r
+
+    def cropImage(self, image):
+        x = int(self.xTopLeft)
+        y = int(self.yTopLeft)
+        w = int(abs(self.xTopLeft - self.xBottomRight))
+        h = int(abs(self.yBottomRight - self.yTopLeft))
+        self.image = image[y:y+h, x:x+w].copy()
+
 
 class KalmanTrackedObject(TrackedObject):
     # a object with its track
@@ -527,6 +542,38 @@ class ObjectTracker:
 
         return acc
 
+    def update_mot_metrics(self, other, acc):
+        for id, frame in self.trackedFrames.items():
+            if self.method == "RegionOverlap":
+
+                detObjects = [r.objectId for r in frame.get_ROIs()]
+                detROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in frame.get_ROIs()]
+
+            else: # Kalman
+                detObjects = [r.objectId for r in frame.get_ROIs()]
+                aux = [self.trackedObjects[id] for id in detObjects]
+                detROIs = [[r.track_corrected[id].xTopLeft,
+                            r.track_corrected[id].yTopLeft,
+                            r.track_corrected[id].xBottomRight,
+                            r.track_corrected[id].yBottomRight] for r in aux]
+
+            if id in other.trackedFrames.keys():
+
+                gtObjects = [r.objectId for r in other.trackedFrames[id].get_ROIs()]
+                gtROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in
+                          other.trackedFrames[id].get_ROIs()]
+            else:
+                gtObjects = []
+                gtROIs = []
+
+
+            dists = mm.distances.iou_matrix(gtROIs, detROIs, max_iou=0.5)
+            acc.update(gtObjects, detObjects, dists)
+
+            #print("Compute metrics for frame {}".format(id))
+            #print(acc.mot_events.loc[id])
+
+
 
     def removeStaticObjects(self, dist_threshold_px=20):
         toDelete = []
@@ -543,3 +590,62 @@ class ObjectTracker:
 
             for f in self.trackedFrames:
                 self.trackedFrames[f].remove_object(id)
+
+    def mergeTrackedObjects(self, id1, id2):
+        if not id1 in self.trackedObjects:
+            return
+
+        if not id2 in self.trackedObjects:
+            return
+
+        # merge tracked objects
+        obj1 = self.trackedObjects[id1]
+        obj2 = self.trackedObjects[id2]
+
+        for frame_id, roi in obj2.get_track():
+            roi.objectId = obj1.objectId
+            obj1.add_frame_roi(frame_id, roi)
+
+        self.trackedObjects.remove(id2)
+
+        # replace ids in tracked frames
+        for f in self.trackedFrames:
+            for roi in f.get_ROIs():
+                if roi.objectId == id2:
+                    roi.objectId = id1
+
+    def objectReId(self, oldId, newId):
+        if not oldId in self.trackedObjects:
+            return
+
+        if newId in self.trackedObjects:
+            return
+
+        obj = self.trackedObjects[oldId]
+
+        for frame_id, roi in obj.get_track():
+            roi.objectId = newId
+
+        for f in self.trackedFrames:
+            for roi in f.get_ROIs():
+                if roi.objectId == oldId:
+                    roi.objectId = newId
+
+    def getImagesForROIs(self, video_file):
+        idx = 1
+        cap = cv2.VideoCapture(video_file)
+        ret = True
+        while ret:
+            ret, image = cap.read()
+            if image is not None:
+                if idx in self.trackedFrames:
+                    for roi in self.trackedFrames[idx].get_ROIs():
+                        roi.cropImage(image)
+
+            idx += 1
+        cap.release()
+
+    #def mergeSimilarObjects(self):
+    #    for obj1 in self.trackedObjects:
+    #        for obj2 in self.trackedObjects:
+    #            if obj1.objectId != obj2.objectId:

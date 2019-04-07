@@ -2,6 +2,7 @@ from datasets.aicity_mtmc_dataset import AICityMTMCDataset, AICityMTMCSequence, 
 from utils.object_tracking import ObjectTracker
 from week3.task2 import load_annotations, load_detections_txt, print_mot_metrics
 import cv2
+import motmetrics as mm
 
 def make_video_from_tracker(trckr, cam, video_name):
     four_cc = cv2.VideoWriter_fourcc(*'XVID')
@@ -36,6 +37,7 @@ def MultiTrackMultiCamera():
     trackingMethod = "RegionOverlap"
     detectionMethod = "yolo3"
 
+    acc = mm.MOTAccumulator(auto_id=True)
     for c in seq.getCameras():
         cam = seq.getCamera(c)
         print("Camera {}".format(c))
@@ -48,6 +50,7 @@ def MultiTrackMultiCamera():
             tracker.process_frame(frame)
 
         tracker.removeStaticObjects()
+        tracker.getImagesForROIs(cam.getVideoPath())
 
         #make_video_from_tracker(tracker, cam, "test.avi")
 
@@ -60,10 +63,11 @@ def MultiTrackMultiCamera():
         #make_video_from_tracker(gt_tracker, cam, "test.avi")
 
         # Compute metrics
-        acc = tracker.compute_mot_metrics(gt_tracker)
-        print_mot_metrics(acc)
-
+        tracker.update_mot_metrics(gt_tracker, acc)
         trackers[c] = tracker
+
+    print_mot_metrics(acc)
+
 
     # TODO: play with trackers dict to match tracked objects
 
