@@ -1,11 +1,15 @@
-import numpy as np
-import cv2
-import random
 import copy
-from utils.kalman_filter import KalmanFilter, KalmanFilter_ConstantVelocity, KalmanFilter_ConstantAcceleration
-from utils.optical_flow_tracker import  OpticalFlowTracker
+import random
+
+import cv2
 import motmetrics as mm
+import numpy as np
+from skimage.measure import compare_ssim as ssim
+
 from paths import AICITY_DIR
+from utils.kalman_filter import KalmanFilter_ConstantAcceleration
+from utils.optical_flow_tracker import OpticalFlowTracker
+
 
 class TrackedObject:
     # a object with its track
@@ -32,6 +36,22 @@ class TrackedObject:
             if not roi.image is None:
                 cv2.imshow("Image", roi.image)
                 cv2.waitKey(1)
+
+    def findBestImage(self):
+        best_id = 0
+        max_area = 0
+        for frame_id, roi in self.track.items():
+            a = roi.area()
+            if a > max_area:
+                best_id = frame_id
+                max_area = a
+
+        if best_id == 0:
+            self.bestImage = None
+        else:
+            self.bestImage = self.track[best_id].image
+
+
 
 class ROI:
     # region of interest of a detected object
@@ -91,6 +111,9 @@ class ROI:
 
         #cv2.imshow("Image", self.image)
         #cv2.waitKey(1)
+
+    def area(self):
+        return abs(self.xTopLeft - self.xBottomRight) * abs(self.yTopLeft - self.yBottomRight)
 
 
 
@@ -547,6 +570,7 @@ class ObjectTracker:
 
         return acc
 
+    # mot metric calculation in a cumulative way (for multi track multi cam)
     def update_mot_metrics(self, other, acc):
         for id, frame in self.trackedFrames.items():
             if self.method == "RegionOverlap":
@@ -579,7 +603,7 @@ class ObjectTracker:
             #print(acc.mot_events.loc[id])
 
 
-
+    # tries to remove tracked objects that don't move from its first frame to the last
     def removeStaticObjects(self, dist_threshold_px=20):
         toDelete = []
         for obj in self.trackedObjects:
@@ -596,12 +620,19 @@ class ObjectTracker:
             for f in self.trackedFrames:
                 self.trackedFrames[f].remove_object(id)
 
+    # merge assigns id1 to every apearance of object with id2 whithin this tracker
     def mergeTrackedObjects(self, id1, id2):
         if not id1 in self.trackedObjects:
             return
 
         if not id2 in self.trackedObjects:
             return
+
+        # don't merge objects that appear in the same frame
+        for frame_id, roi in self.trackedObjects[id1].get_track().items():
+            if frame_id in self.trackedObjects[id2].get_track().keys():
+                print("cannot merge objects that appear in the same frame")
+                return
 
         # merge tracked objects
         obj1 = self.trackedObjects[id1]
@@ -619,6 +650,7 @@ class ObjectTracker:
                 if roi.objectId == id2:
                     roi.objectId = id1
 
+    # change Id of an object. Specially useful for multi tracking multi camera
     def objectReId(self, oldId, newId):
         if not oldId in self.trackedObjects:
             return
@@ -636,6 +668,7 @@ class ObjectTracker:
                 if roi.objectId == oldId:
                     roi.objectId = newId
 
+    # gets all ROI for each frame of every tracked object
     def getImagesForROIs(self, video_file):
         idx = 1
         cap = cv2.VideoCapture(video_file)
@@ -657,39 +690,31 @@ class ObjectTracker:
             idx += 1
         cap.release()
 
+        # find best shot of each image (biggest area)
+        for id, obj in self.trackedObjects.items():
+            obj.findBestImage()
+
+    # merges similar tracked objects based on
     def mergeSimilarObjects(self):
         toMerge = []
 
         for id1, obj1 in self.trackedObjects.items():
             for id2, obj2 in self.trackedObjects.items():
                 if obj1.objectId != obj2.objectId:
-                    f1 = sorted(obj1.get_track().keys())[-1]
-                    f2 = sorted(obj2.get_track().keys())[0]
-                    i1 = obj1.get_track()[f1].image
-                    i2 = obj2.get_track()[f2].image
+                    i1 = obj1.bestImage
+                    i2 = obj2.bestImage
 
+                    hist1 = cv2.calcHist([i1], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+                    hist1 = cv2.normalize(hist1, hist1).flatten()
+                    hist2 = cv2.calcHist([i2], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+                    hist2 = cv2.normalize(hist2, hist2).flatten()
 
-                    hsv1 = cv2.cvtColor(i1, cv2.COLOR_BGR2HSV)
-                    hsv2 = cv2.cvtColor(i2, cv2.COLOR_BGR2HSV)
+                    d = cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
+                    #print(id1, id2, d)
+                    if d > .76:
+                        toMerge.append((id1,id2, d))
 
-                    h_bins = 50
-                    s_bins = 60
-                    histSize = [h_bins, s_bins]
-                    # hue varies from 0 to 179, saturation from 0 to 255
-                    h_ranges = [0, 180]
-                    s_ranges = [0, 256]
-                    ranges = h_ranges + s_ranges # concat lists
-                    # Use the 0-th and 1-st channels
-                    channels = [0, 1]
-
-                    hist1 = cv2.calcHist([hsv1], channels, None, histSize, ranges, accumulate=False)
-                    cv2.normalize(hist1, hist1, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-                    hist2 = cv2.calcHist([hsv2], channels, None, histSize, ranges, accumulate=False)
-                    cv2.normalize(hist2, hist2, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-
-                    d = cv2.compareHist(hist1, hist2, cv2.HISTCMP_KL_DIV)
-                    if d < 50:
-                        toMerge.append((id1,id2))
-
-        for id1, id2 in toMerge:
-            self.mergeTrackedObjects(id1, id2)
+        for id1, id2, d in toMerge:
+            if abs(id1-id2) < 10:
+                #print("Merging {} and {} dist {}".format(id1, id2, d))
+                self.mergeTrackedObjects(id1, id2)
