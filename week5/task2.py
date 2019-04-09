@@ -3,6 +3,7 @@ from utils.object_tracking import ObjectTracker
 from week3.task2 import load_annotations, load_detections_txt, print_mot_metrics
 import cv2
 import motmetrics as mm
+import predict
 
 def make_video_from_tracker(trckr, cam, video_name):
     four_cc = cv2.VideoWriter_fourcc(*'XVID')
@@ -71,3 +72,7 @@ def MultiTrackMultiCamera():
 
     # TODO: play with trackers dict to match tracked objects
 
+if __name__ == '__main__':
+    # TODO: substitute 'emulate_input_data' by actual code
+    frame0_samples, frame1_samples = predict.emulate_input_data()
+    predict.match(frame0_samples, frame1_samples)
