@@ -85,8 +85,8 @@ class KalmanTrackedObject(TrackedObject):
         self.objectId = id
         self.track = {}
         self.track_corrected = {}
-        self.KF = KalmanFilter_ConstantAcceleration(initial_roi.center())  # KF instance to track this object
-        #self.KF = KalmanFilter_ConstantVelocity(initial_roi.center())  # KF instance to track this object
+        #self.KF = KalmanFilter_ConstantAcceleration(initial_roi.center())  # KF instance to track this object
+        self.KF = KalmanFilter_ConstantVelocity(initial_roi.center())  # KF instance to track this object
         self.color = (int(random.random() * 256),
                       int(random.random() * 256),
                       int(random.random() * 256))
@@ -527,15 +527,21 @@ class ObjectTracker:
 
         return acc
 
-
-    def removeStaticObjects(self, dist_threshold_px=20):
+    def removeStaticObjects(self, dist_threshold_px=20, width=1920, height=1080):
+        diff_width = (dist_threshold_px/100) * width
+        diff_height = (dist_threshold_px/100) * height
         toDelete = []
         for obj in self.trackedObjects:
             track_frames = sorted(self.trackedObjects[obj].get_track().keys())
             fr = self.trackedObjects[obj].get_track()[track_frames[0]]
             lr = self.trackedObjects[obj].get_track()[track_frames[-1]]
 
-            if (abs(fr.xTopLeft-lr.xTopLeft) < dist_threshold_px) and (abs(fr.yTopLeft - lr.yTopLeft) < dist_threshold_px) and (abs(fr.xBottomRight - lr.xBottomRight) < dist_threshold_px) and (abs(fr.yBottomRight - lr.yBottomRight) < dist_threshold_px):
+            # if (abs(fr.xTopLeft-lr.xTopLeft) < dist_threshold_px) and (abs(fr.yTopLeft - lr.yTopLeft) < dist_threshold_px) and (abs(fr.xBottomRight - lr.xBottomRight) < dist_threshold_px) and (abs(fr.yBottomRight - lr.yBottomRight) < dist_threshold_px):
+            #     toDelete.append(obj)
+            if (abs(fr.xTopLeft - lr.xTopLeft) < diff_width) and (
+                    abs(fr.yTopLeft - lr.yTopLeft) < diff_height) and (
+                    abs(fr.xBottomRight - lr.xBottomRight) < diff_width) and (
+                    abs(fr.yBottomRight - lr.yBottomRight) < diff_height):
                 toDelete.append(obj)
 
         for id in toDelete:

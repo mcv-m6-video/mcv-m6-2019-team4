@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 import motmetrics as mm
 
 
-def load_detections_txt(detections_file, gtFormat, confidence_th=.2, isGT = False):
+def load_detections_txt(detections_file, gtFormat, confidence_th=.2, isGT=False):
     detector = detection_gt_extractor.detectionExtractorGT(detections_file, gtFormat, confidence_th)
     # frame objects creation
-    frame_dict = {i: Frame(i) for i in range(detector.getFirstFrame(),detector.getLastFrame())}
+    frame_dict = {i: Frame(i) for i in range(detector.getFirstFrame(), detector.getLastFrame())}
 
     # filling frames with ROIs
     for i in frame_dict:
@@ -23,6 +23,7 @@ def load_detections_txt(detections_file, gtFormat, confidence_th=.2, isGT = Fals
                 frame_dict[i].add_ROI( ROI(r[2], r[3], r[4], r[5]) )
 
     return frame_dict
+
 
 def load_annotations(annotations_file):
     annotations = annotation_parser.annotationsParser(annotations_file)
@@ -55,6 +56,7 @@ def make_video_from_tracker(trckr, video_name):
 
     video.release()
 
+
 def make_video_from_kalman_tracker(trckr, video_name):
     four_cc = cv2.VideoWriter_fourcc(*'XVID')
     video = cv2.VideoWriter(video_name, four_cc, 10, (1920, 1080))
@@ -82,6 +84,13 @@ def print_mot_metrics(acc):
         generate_overall=True
     )
 
+    # summary = mh.compute_many(
+    #     [acc, acc.events.loc[0:1]],
+    #     metrics=mm.metrics.motchallenge_metrics,
+    #     names='full',
+    #     generate_overall=False
+    # )
+
     strsummary = mm.io.render_summary(
         summary,
         formatters=mh.formatters,
@@ -89,3 +98,4 @@ def print_mot_metrics(acc):
     )
 
     print(strsummary)
+    return summary['idf1']['full']  # return IDF1 to fine-tune some parameters
