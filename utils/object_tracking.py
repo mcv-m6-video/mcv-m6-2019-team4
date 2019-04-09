@@ -704,17 +704,43 @@ class ObjectTracker:
                     i1 = obj1.bestImage
                     i2 = obj2.bestImage
 
-                    hist1 = cv2.calcHist([i1], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
-                    hist1 = cv2.normalize(hist1, hist1).flatten()
-                    hist2 = cv2.calcHist([i2], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
-                    hist2 = cv2.normalize(hist2, hist2).flatten()
-
-                    d = cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
-                    #print(id1, id2, d)
+                    # print(id1, id2, d)
+                    d = self.compareImages(i1, i2)
                     if d > .76:
-                        toMerge.append((id1,id2, d))
+                        toMerge.append((id1, id2, d))
 
         for id1, id2, d in toMerge:
             if abs(id1-id2) < 10:
                 #print("Merging {} and {} dist {}".format(id1, id2, d))
                 self.mergeTrackedObjects(id1, id2)
+
+    # merges similar tracked objects from different cameras
+    def mergeObjectTrackers(self, otherTracker):
+        toMerge = []
+
+        for id1, obj1 in self.trackedObjects.items():
+            for id2, obj2 in otherTracker.items():
+                if obj1.objectId != obj2.objectId:
+                    i1 = obj1.bestImage
+                    i2 = obj2.bestImage
+
+                    # print(id1, id2, d)
+                    d = self.compareImages(i1, i2)
+                    if d > .76:
+                        toMerge.append((id1, id2, d))
+
+        for id1, id2, d in toMerge:
+            if abs(id1 - id2) < 10:
+                # print("Merging {} and {} dist {}".format(id1, id2, d))
+                self.objectReId(id1, id2)
+
+    def compareImages(self, i1, i2):
+        hist1 = cv2.calcHist([i1], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+        hist1 = cv2.normalize(hist1, hist1).flatten()
+        hist2 = cv2.calcHist([i2], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+        hist2 = cv2.normalize(hist2, hist2).flatten()
+
+        d = cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
+        # print(id1, id2, d)
+        return d
+
