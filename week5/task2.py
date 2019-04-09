@@ -50,20 +50,30 @@ def MultiTrackMultiCamera():
         untracked_frames = load_detections_txt(cam.getDetectionFile(detectionMethod), "LTWH", detectionThreshold)
         tracker = ObjectTracker(trackingMethod)
         for id, frame in untracked_frames.items():
-            #print("Tracking objects in frame {}".format(id))
+            print("Tracking objects in frame {}".format(id))
             tracker.process_frame(frame)
 
         #tracker.removeStaticObjects()
         tracker.getImagesForROIs(cam.getVideoPath())
         tracker.mergeSimilarObjects()
-        for id, obj in tracker.trackedObjects.items():
-            cv2.imwrite("results/{}_{}.png".format(c, id), obj.bestImage)
+        #for id, obj in tracker.trackedObjects.items():
+            #cv2.imwrite("results/{}_{}.png".format(c, id), obj.bestImage)
             #cv2.imshow("Image", obj.bestImage)
             #cv2.waitKey(1)
+        trackers[c] = tracker
+        # make_video_from_tracker(tracker, cam, "{}.avi".format(c))
 
+    #merge tracks from different cameras
+    for c1 in seq.getCameras():
+        print('merging tracks')
+        tracker = trackers[c1]
+        for c2 in seq.getCameras():
+            tracker.mergeObjectTrackers(trackers[c2])
+        trackers[c1] = tracker
 
-        #make_video_from_tracker(tracker, cam, "{}.avi".format(c))
-
+    #Compute metrics for merged tracks
+    for c in seq.getCameras():
+        tracker = trackers[c]
         # Load ground truth
         gt_frames = load_detections_txt(cam.getGTFile(), "LTWH", .1, isGT=True)
         gt_tracker = ObjectTracker("")
@@ -77,7 +87,6 @@ def MultiTrackMultiCamera():
         print_mot_metrics(a)
 
         tracker.update_mot_metrics(gt_tracker, acc)
-        trackers[c] = tracker
 
     print_mot_metrics(acc)
 
