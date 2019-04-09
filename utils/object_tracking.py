@@ -43,7 +43,6 @@ class ROI:
         self.xBottomRight = xBottomRight
         self.yBottomRight = yBottomRight
         self.objectId = objectId
-        self.image = None
 
     def __str__(self):
         return '{} {} {} {}'.format(self.xTopLeft, self.yTopLeft, self.xBottomRight, self.yBottomRight)
@@ -89,6 +88,11 @@ class ROI:
         w = int(abs(self.xTopLeft - self.xBottomRight))
         h = int(abs(self.yBottomRight - self.yTopLeft))
         self.image = image[y:y+h, x:x+w].copy()
+
+        #cv2.imshow("Image", self.image)
+        #cv2.waitKey(1)
+
+
 
 
 class KalmanTrackedObject(TrackedObject):
@@ -265,6 +269,7 @@ class ObjectTracker:
 
                 else:
                     self.trackedObjects[roi.objectId].add_frame_roi(frame.get_id(), roi)
+
 
         #print("Adding new tracked frame {}".format(frame.get_id()))
         self.trackedFrames[frame.get_id()] = tracked_frame
@@ -602,14 +607,14 @@ class ObjectTracker:
         obj1 = self.trackedObjects[id1]
         obj2 = self.trackedObjects[id2]
 
-        for frame_id, roi in obj2.get_track():
+        for frame_id, roi in obj2.get_track().items():
             roi.objectId = obj1.objectId
             obj1.add_frame_roi(frame_id, roi)
 
-        self.trackedObjects.remove(id2)
+        del self.trackedObjects[id2]
 
         # replace ids in tracked frames
-        for f in self.trackedFrames:
+        for i, f in self.trackedFrames.items():
             for roi in f.get_ROIs():
                 if roi.objectId == id2:
                     roi.objectId = id1
@@ -637,15 +642,54 @@ class ObjectTracker:
         ret = True
         while ret:
             ret, image = cap.read()
+            #cv2.imshow("Image", image)
+            #cv2.waitKey(1)
             if image is not None:
                 if idx in self.trackedFrames:
                     for roi in self.trackedFrames[idx].get_ROIs():
                         roi.cropImage(image)
 
+                    for id, obj in self.trackedObjects.items():
+                        if idx in obj.get_track():
+                            for i, r in obj.get_track().items():
+                                r.cropImage(image)
+
             idx += 1
         cap.release()
 
-    #def mergeSimilarObjects(self):
-    #    for obj1 in self.trackedObjects:
-    #        for obj2 in self.trackedObjects:
-    #            if obj1.objectId != obj2.objectId:
+    def mergeSimilarObjects(self):
+        toMerge = []
+
+        for id1, obj1 in self.trackedObjects.items():
+            for id2, obj2 in self.trackedObjects.items():
+                if obj1.objectId != obj2.objectId:
+                    f1 = sorted(obj1.get_track().keys())[-1]
+                    f2 = sorted(obj2.get_track().keys())[0]
+                    i1 = obj1.get_track()[f1].image
+                    i2 = obj2.get_track()[f2].image
+
+
+                    hsv1 = cv2.cvtColor(i1, cv2.COLOR_BGR2HSV)
+                    hsv2 = cv2.cvtColor(i2, cv2.COLOR_BGR2HSV)
+
+                    h_bins = 50
+                    s_bins = 60
+                    histSize = [h_bins, s_bins]
+                    # hue varies from 0 to 179, saturation from 0 to 255
+                    h_ranges = [0, 180]
+                    s_ranges = [0, 256]
+                    ranges = h_ranges + s_ranges # concat lists
+                    # Use the 0-th and 1-st channels
+                    channels = [0, 1]
+
+                    hist1 = cv2.calcHist([hsv1], channels, None, histSize, ranges, accumulate=False)
+                    cv2.normalize(hist1, hist1, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+                    hist2 = cv2.calcHist([hsv2], channels, None, histSize, ranges, accumulate=False)
+                    cv2.normalize(hist2, hist2, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+
+                    d = cv2.compareHist(hist1, hist2, cv2.HISTCMP_KL_DIV)
+                    if d < 50:
+                        toMerge.append((id1,id2))
+
+        for id1, id2 in toMerge:
+            self.mergeTrackedObjects(id1, id2)

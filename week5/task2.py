@@ -49,10 +49,11 @@ def MultiTrackMultiCamera():
             #print("Tracking objects in frame {}".format(id))
             tracker.process_frame(frame)
 
-        tracker.removeStaticObjects()
-        tracker.getImagesForROIs(cam.getVideoPath())
+        #tracker.removeStaticObjects()
+        #tracker.getImagesForROIs(cam.getVideoPath())
+        #tracker.mergeSimilarObjects()
 
-        #make_video_from_tracker(tracker, cam, "test.avi")
+        #make_video_from_tracker(tracker, cam, "{}.avi".format(c))
 
         # Load ground truth
         gt_frames = load_detections_txt(cam.getGTFile(), "LTWH", .2, isGT=True)
@@ -63,6 +64,9 @@ def MultiTrackMultiCamera():
         #make_video_from_tracker(gt_tracker, cam, "test.avi")
 
         # Compute metrics
+        a = tracker.compute_mot_metrics(gt_tracker)
+        print_mot_metrics(a)
+
         tracker.update_mot_metrics(gt_tracker, acc)
         trackers[c] = tracker
 
