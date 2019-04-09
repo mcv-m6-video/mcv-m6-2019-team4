@@ -660,10 +660,10 @@ class ObjectTracker:
 
         obj = self.trackedObjects[oldId]
 
-        for frame_id, roi in obj.get_track():
+        for frame_id, roi in obj.get_track().items():
             roi.objectId = newId
 
-        for f in self.trackedFrames:
+        for i, f in self.trackedFrames.items():
             for roi in f.get_ROIs():
                 if roi.objectId == oldId:
                     roi.objectId = newId
@@ -719,7 +719,7 @@ class ObjectTracker:
         toMerge = []
 
         for id1, obj1 in self.trackedObjects.items():
-            for id2, obj2 in otherTracker.items():
+            for id2, obj2 in otherTracker.trackedObjects.items():
                 if obj1.objectId != obj2.objectId:
                     i1 = obj1.bestImage
                     i2 = obj2.bestImage
