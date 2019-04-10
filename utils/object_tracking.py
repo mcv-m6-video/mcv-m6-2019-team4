@@ -491,8 +491,8 @@ class ObjectTracker:
 
         return image
 
-    def compute_mot_metrics(self, other, mtsc_tracker=True):
-        acc = mm.MOTAccumulator(auto_id=False) # we will provide frame ids
+    def compute_mot_metrics(self, other, mtsc_tracker=False):
+        acc = mm.MOTAccumulator(auto_id=False)  # we will provide frame ids
 
         for id, frame in self.trackedFrames.items():
             if self.method == "RegionOverlap" or mtsc_tracker:
