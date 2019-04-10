@@ -218,12 +218,12 @@ class Frame:
 class ObjectTracker:
     # class that tracks objects along a list of frames
 
-    def __init__(self, method):
+    def __init__(self, method, firstObjectId = 0):
         self.method = method
         self.firstFrame = True
         self.trackedObjects = {}
         self.trackedFrames = {}
-        self.lastObjectId = 0
+        self.lastObjectId = firstObjectId
 
     def load_annotated_frame(self, frame : Frame):
         tracked_frame = Frame(frame.get_id())
@@ -739,9 +739,8 @@ class ObjectTracker:
                         toMerge.append((id1, id2, d))
 
         for id1, id2, d in toMerge:
-            if abs(id1 - id2) < 10:
-                # print("Merging {} and {} dist {}".format(id1, id2, d))
-                self.objectReId(id1, id2)
+            # print("Merging {} and {} dist {}".format(id1, id2, d))
+            self.objectReId(id1, id2)
 
     def compareImages(self, i1, i2):
         hist1 = cv2.calcHist([i1], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])

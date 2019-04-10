@@ -40,6 +40,7 @@ def MultiTrackMultiCamera():
     trackingMethod = "RegionOverlap"
     detectionMethod = "yolo3"
     detectionThreshold = .8
+    iniId = 0
 
     acc = mm.MOTAccumulator(auto_id=True)
     for c in seq.getCameras():
@@ -48,12 +49,12 @@ def MultiTrackMultiCamera():
 
         # Load detections
         untracked_frames = load_detections_txt(cam.getDetectionFile(detectionMethod), "LTWH", detectionThreshold)
-        tracker = ObjectTracker(trackingMethod)
+        tracker = ObjectTracker(trackingMethod, iniId)
         for id, frame in untracked_frames.items():
             print("Tracking objects in frame {}".format(id))
             tracker.process_frame(frame)
 
-        #tracker.removeStaticObjects()
+        tracker.removeStaticObjects()
         tracker.getImagesForROIs(cam.getVideoPath())
         tracker.mergeSimilarObjects()
         #for id, obj in tracker.trackedObjects.items():
@@ -63,16 +64,20 @@ def MultiTrackMultiCamera():
         trackers[c] = tracker
         # make_video_from_tracker(tracker, cam, "{}.avi".format(c))
 
+        iniId += 1000
+
     #merge tracks from different cameras
-    for c1 in seq.getCameras():
-        print('merging tracks')
-        tracker = trackers[c1]
-        for c2 in seq.getCameras():
-            tracker.mergeObjectTrackers(trackers[c2])
-        trackers[c1] = tracker
+    #for c1 in seq.getCameras():
+    #    print('merging tracks')
+    #    tracker = trackers[c1]
+    #    for c2 in seq.getCameras():
+    #        if c1 != c2:
+    #            tracker.mergeObjectTrackers(trackers[c2])
+    #    trackers[c1] = tracker
 
     #Compute metrics for merged tracks
     for c in seq.getCameras():
+        cam = seq.getCamera(c)
         tracker = trackers[c]
         # Load ground truth
         gt_frames = load_detections_txt(cam.getGTFile(), "LTWH", .1, isGT=True)
