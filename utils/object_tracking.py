@@ -640,7 +640,7 @@ class ObjectTracker:
         # don't merge objects that appear in the same frame
         for frame_id, roi in self.trackedObjects[id1].get_track().items():
             if frame_id in self.trackedObjects[id2].get_track().keys():
-                print("cannot merge objects that appear in the same frame")
+                #print("cannot merge objects that appear in the same frame")
                 return
 
         # merge tracked objects
@@ -661,10 +661,7 @@ class ObjectTracker:
 
     # change Id of an object. Specially useful for multi tracking multi camera
     def objectReId(self, oldId, newId):
-        if not oldId in self.trackedObjects:
-            return
-
-        if newId in self.trackedObjects:
+        if oldId not in self.trackedObjects:
             return
 
         obj = self.trackedObjects[oldId]
@@ -676,6 +673,9 @@ class ObjectTracker:
             for roi in f.get_ROIs():
                 if roi.objectId == oldId:
                     roi.objectId = newId
+
+        self.trackedObjects[newId] = obj
+        del self.trackedObjects[oldId]
 
     # gets all ROI for each frame of every tracked object
     def getImagesForROIs(self, video_file):
@@ -733,14 +733,14 @@ class ObjectTracker:
                     i1 = obj1.bestImage
                     i2 = obj2.bestImage
 
-                    # print(id1, id2, d)
                     d = self.compareImages(i1, i2)
-                    if d > .76:
+                    #print(id1, id2, d)
+                    if d > .95:
                         toMerge.append((id1, id2, d))
 
         for id1, id2, d in toMerge:
-            # print("Merging {} and {} dist {}".format(id1, id2, d))
-            self.objectReId(id1, id2)
+            print("Merging {} and {} dist {}".format(id1, id2, d))
+            otherTracker.objectReId(id2, id1)
 
     def compareImages(self, i1, i2):
         hist1 = cv2.calcHist([i1], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
