@@ -4,18 +4,20 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-pillow = "*"
-numpy = "*"
-xmltodict = "*"
-sklearn = "*"
-matplotlib = "*"
-opencv-contrib-python = "*"
-requests = "*"
-torchvision = "*"
-motmetrics = "*"
 filterpy = "*"
-fonts = "*"
 font-source-serif-pro = "*"
+fonts = "*"
+matplotlib = "*"
+motmetrics = "*"
+numpy = "*"
+opencv-contrib-python = "*"
+pillow = "*"
+requests = "*"
+scikit-learn = "*"
+scipy = "*"
+sklearn = "*"
+torchvision = "*"
+xmltodict = "*"
 
 [dev-packages]
 

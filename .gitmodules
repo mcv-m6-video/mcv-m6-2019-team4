@@ -1,0 +1,3 @@
+[submodule "proxy-nca"]
+	path = proxy-nca
+	url = git@github.com:jonpoveda/proxy-nca.git

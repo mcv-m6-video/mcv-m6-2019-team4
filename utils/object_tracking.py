@@ -1,11 +1,15 @@
-import numpy as np
-import cv2
-import random
 import copy
-from utils.kalman_filter import KalmanFilter, KalmanFilter_ConstantVelocity, KalmanFilter_ConstantAcceleration
-from utils.optical_flow_tracker import  OpticalFlowTracker
+import random
+
+import cv2
 import motmetrics as mm
+import numpy as np
+# from skimage.measure import compare_ssim as ssim
+
 from paths import AICITY_DIR
+from utils.kalman_filter import KalmanFilter_ConstantAcceleration, KalmanFilter_ConstantVelocity
+from utils.optical_flow_tracker import OpticalFlowTracker
+
 
 class TrackedObject:
     # a object with its track
@@ -27,11 +31,32 @@ class TrackedObject:
     def get_track(self):
         return self.track
 
+    def drawObjectVideo(self):
+        for frame_id, roi in self.track.items():
+            if not roi.image is None:
+                cv2.imshow("Image", roi.image)
+                cv2.waitKey(1)
+
+    def findBestImage(self):
+        best_id = 0
+        max_area = 0
+        for frame_id, roi in self.track.items():
+            a = roi.area()
+            if a > max_area:
+                best_id = frame_id
+                max_area = a
+
+        if best_id == 0:
+            self.bestImage = None
+        else:
+            self.bestImage = self.track[best_id].image
+
+
 class ROI:
     # region of interest of a detected object
     # may or may not have an object id associated
 
-    def __init__(self, xTopLeft, yTopLeft, xBottomRight, yBottomRight, objectId = -1):
+    def __init__(self, xTopLeft, yTopLeft, xBottomRight, yBottomRight, objectId=-1):
         self.xTopLeft = xTopLeft
         self.yTopLeft = yTopLeft
         self.xBottomRight = xBottomRight
@@ -76,6 +101,22 @@ class ROI:
         r.yBottomRight = center[1][0] + h / 2
         return r
 
+    def cropImage(self, image):
+        x = int(self.xTopLeft)
+        y = int(self.yTopLeft)
+        w = int(abs(self.xTopLeft - self.xBottomRight))
+        h = int(abs(self.yBottomRight - self.yTopLeft))
+        self.image = image[y:y+h, x:x+w].copy()
+
+        # cv2.imshow("Image", self.image)
+        # cv2.waitKey(1)
+
+    def area(self):
+        return abs(self.xTopLeft - self.xBottomRight) * abs(self.yTopLeft - self.yBottomRight)
+
+
+
+
 class KalmanTrackedObject(TrackedObject):
     # a object with its track
     # a track is a dictionary of frame_id and roi of the tracked
@@ -110,6 +151,7 @@ class KalmanTrackedObject(TrackedObject):
         r_c = ROI(raux.xTopLeft, raux.yTopLeft, raux.xBottomRight, raux.yBottomRight, self.objectId)
         self.track_corrected[frame_id] = r_c
 
+
 class OpticalFlowTrackedObject(TrackedObject):
     # a object with its track
     # a track is a dictionary of frame_id and roi of the tracked
@@ -127,7 +169,6 @@ class OpticalFlowTrackedObject(TrackedObject):
                       int(random.random() * 256),
                       int(random.random() * 256))
         self.first_frame = True
-
 
     def add_frame_roi(self, frame_id, roi:ROI):
 
@@ -150,6 +191,7 @@ class OpticalFlowTrackedObject(TrackedObject):
             r_c = ROI(raux.xTopLeft, raux.yTopLeft, raux.xBottomRight, raux.yBottomRight, self.objectId)
             self.track_corrected[frame_id] = r_c
 
+
 class Frame:
     # collection of ROIs detected on an image frame
 
@@ -171,6 +213,7 @@ class Frame:
         for r in self.ROIs:
             if r.objectId == id:
                 self.ROIs.remove(r)
+
 
 class ObjectTracker:
     # class that tracks objects along a list of frames
@@ -198,7 +241,7 @@ class ObjectTracker:
 
             tracked_frame.add_ROI( ROI(r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight, r.objectId) )
 
-        #print("Adding new tracked frame {}".format(frame.get_id()))
+        # print("Adding new tracked frame {}".format(frame.get_id()))
         self.trackedFrames[frame.get_id()] = copy.copy(tracked_frame)
 
     def process_frame(self, frame : Frame):
@@ -251,13 +294,14 @@ class ObjectTracker:
                 else:
                     self.trackedObjects[roi.objectId].add_frame_roi(frame.get_id(), roi)
 
-        #print("Adding new tracked frame {}".format(frame.get_id()))
+
+        # print("Adding new tracked frame {}".format(frame.get_id()))
         self.trackedFrames[frame.get_id()] = tracked_frame
 
     # gets a frame whose rois have no assigned object id and
     # returns a copy of the frame with assigned oject ids if
     # possible (-1 otherwise)
-    def _process_frame_overlap(self, untracked_frame: Frame, overlap_th = 0.0, unique_objects = True):
+    def _process_frame_overlap(self, untracked_frame: Frame, overlap_th=0.0, unique_objects=True):
         last_frame = self.trackedFrames[untracked_frame.get_id() - 1]
 
         # Create a tracked frame with current frame id
@@ -300,7 +344,7 @@ class ObjectTracker:
     # gets a frame whose rois have no assigned object id and
     # returns a copy of the frame with assigned oject ids if
     # possible (-1 otherwise)
-    def _process_frame_kalman(self, untracked_frame: Frame, overlap_th = 0.0, unique_objects = True):
+    def _process_frame_kalman(self, untracked_frame: Frame, overlap_th=0.0, unique_objects=True):
         last_frame = self.trackedFrames[untracked_frame.get_id() - 1]
 
         # Create a tracked frame with current frame id
@@ -343,7 +387,7 @@ class ObjectTracker:
     # gets a frame whose rois have no assigned object id and
     # returns a copy of the frame with assigned oject ids if
     # possible (-1 otherwise)
-    def _process_frame_optical_flow(self, untracked_frame: Frame, overlap_th = 0.0, unique_objects = True):
+    def _process_frame_optical_flow(self, untracked_frame: Frame, overlap_th=0.0, unique_objects=True):
         last_frame = self.trackedFrames[untracked_frame.get_id() - 1]
 
         # Create a tracked frame with current frame id
@@ -413,7 +457,7 @@ class ObjectTracker:
                     -1
                 )
 
-                #roi_center = (int(roi.xTopLeft + (abs(roi.xTopLeft - roi.xBottomRight) / 2.0)),
+                # roi_center = (int(roi.xTopLeft + (abs(roi.xTopLeft - roi.xBottomRight) / 2.0)),
                 #              int(roi.yTopLeft + (abs(roi.yTopLeft - roi.yBottomRight) / 2.0)) )
                 text_pos = (int(roi.xTopLeft+10), int(roi.yTopLeft+20))
 
@@ -423,7 +467,6 @@ class ObjectTracker:
             image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
         return image
-
 
     def draw_frame_kalman(self, frame_number, image):
         frame = self.trackedFrames[frame_number]
@@ -442,13 +485,13 @@ class ObjectTracker:
             )
 
             # For identified object tracks draw tracking line
-            #for i in range(len(tracker.tracks)):
+            # for i in range(len(tracker.tracks)):
             lastr = None
             lastr_corrected = None
             corrected = True
             for i in range(frame_number):
                 if not corrected:
-                    if lastr == None and self.trackedObjects[roi.objectId].track.__contains__(i):
+                    if lastr is None and self.trackedObjects[roi.objectId].track.__contains__(i):
                         lastr = self.trackedObjects[roi.objectId].track[i]
                     elif self.trackedObjects[roi.objectId].track.__contains__(i):
 
@@ -464,21 +507,21 @@ class ObjectTracker:
                                  color, 2)
                         lastr = r
                 else:
-                    if lastr_corrected == None and self.trackedObjects[roi.objectId].track_corrected.__contains__(i):
+                    if lastr_corrected is None and self.trackedObjects[roi.objectId].track_corrected.__contains__(i):
                        lastr_corrected = self.trackedObjects[roi.objectId].track_corrected[i]
                     elif self.trackedObjects[roi.objectId].track_corrected.__contains__(i):
 
-                       # Draw trace line
-                       r = self.trackedObjects[roi.objectId].track_corrected[i]
-                       x1 = lastr_corrected.center()[0][0]
-                       y1 = lastr_corrected.center()[1][0]
-                       x2 = r.center()[0][0]
-                       y2 = r.center()[1][0]
-                       cv2.line(image, (int(x1), int(y1)), (int(x2), int(y2)),
-                                 color, 2)
-                       cv2.line(overlay, (int(x1), int(y1)), (int(x2), int(y2)),
+                        # Draw trace line
+                        r = self.trackedObjects[roi.objectId].track_corrected[i]
+                        x1 = lastr_corrected.center()[0][0]
+                        y1 = lastr_corrected.center()[1][0]
+                        x2 = r.center()[0][0]
+                        y2 = r.center()[1][0]
+                        cv2.line(image, (int(x1), int(y1)), (int(x2), int(y2)),
+                                  color, 2)
+                        cv2.line(overlay, (int(x1), int(y1)), (int(x2), int(y2)),
                                 color, 2)
-                       lastr_corrected = r
+                        lastr_corrected = r
 
             # roi_center = (int(roi.xTopLeft + (abs(roi.xTopLeft - roi.xBottomRight) / 2.0)),
             #               int(roi.yTopLeft + (abs(roi.yTopLeft - roi.yBottomRight) / 2.0)) )
@@ -525,17 +568,55 @@ class ObjectTracker:
 
         return acc
 
-    def removeStaticObjects(self, dist_threshold_px=20, width=1920, height=1080):
-        diff_width = (dist_threshold_px/100) * width
-        diff_height = (dist_threshold_px/100) * height
+    # mot metric calculation in a cumulative way (for multi track multi cam)
+    def update_mot_metrics(self, other, acc):
+        for id, frame in self.trackedFrames.items():
+            if self.method == "RegionOverlap":
+
+                detObjects = [r.objectId for r in frame.get_ROIs()]
+                detROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in frame.get_ROIs()]
+
+            else: # Kalman
+                detObjects = [r.objectId for r in frame.get_ROIs()]
+                aux = [self.trackedObjects[id] for id in detObjects]
+                detROIs = [[r.track_corrected[id].xTopLeft,
+                            r.track_corrected[id].yTopLeft,
+                            r.track_corrected[id].xBottomRight,
+                            r.track_corrected[id].yBottomRight] for r in aux]
+
+            if id in other.trackedFrames.keys():
+
+                gtObjects = [r.objectId for r in other.trackedFrames[id].get_ROIs()]
+                gtROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in
+                          other.trackedFrames[id].get_ROIs()]
+            else:
+                gtObjects = []
+                gtROIs = []
+
+
+            dists = mm.distances.iou_matrix(gtROIs, detROIs, max_iou=0.5)
+            acc.update(gtObjects, detObjects, dists)
+
+            # print("Compute metrics for frame {}".format(id))
+            # print(acc.mot_events.loc[id])
+
+    # tries to remove tracked objects that don't move from its first frame to the last
+    def removeStaticObjects(self, dist_threshold_percentage=20, width=1920, height=1080):
+        diff_width = (dist_threshold_percentage/100) * width
+        diff_height = (dist_threshold_percentage/100) * height
+
         toDelete = []
         for obj in self.trackedObjects:
             track_frames = sorted(self.trackedObjects[obj].get_track().keys())
             fr = self.trackedObjects[obj].get_track()[track_frames[0]]
             lr = self.trackedObjects[obj].get_track()[track_frames[-1]]
 
-            # if (abs(fr.xTopLeft-lr.xTopLeft) < dist_threshold_px) and (abs(fr.yTopLeft - lr.yTopLeft) < dist_threshold_px) and (abs(fr.xBottomRight - lr.xBottomRight) < dist_threshold_px) and (abs(fr.yBottomRight - lr.yBottomRight) < dist_threshold_px):
+            # if (abs(fr.xTopLeft-lr.xTopLeft) < dist_threshold_px) and (
+            # abs(fr.yTopLeft - lr.yTopLeft) < dist_threshold_px) and (
+            # abs(fr.xBottomRight - lr.xBottomRight) < dist_threshold_px) and (
+            # abs(fr.yBottomRight - lr.yBottomRight) < dist_threshold_px):
             #     toDelete.append(obj)
+
             if (abs(fr.xTopLeft - lr.xTopLeft) < diff_width) and (
                     abs(fr.yTopLeft - lr.yTopLeft) < diff_height) and (
                     abs(fr.xBottomRight - lr.xBottomRight) < diff_width) and (
@@ -547,3 +628,128 @@ class ObjectTracker:
 
             for f in self.trackedFrames:
                 self.trackedFrames[f].remove_object(id)
+
+    # merge assigns id1 to every apearance of object with id2 whithin this tracker
+    def mergeTrackedObjects(self, id1, id2):
+        if not id1 in self.trackedObjects:
+            return
+
+        if not id2 in self.trackedObjects:
+            return
+
+        # don't merge objects that appear in the same frame
+        for frame_id, roi in self.trackedObjects[id1].get_track().items():
+            if frame_id in self.trackedObjects[id2].get_track().keys():
+                print("cannot merge objects that appear in the same frame")
+                return
+
+        # merge tracked objects
+        obj1 = self.trackedObjects[id1]
+        obj2 = self.trackedObjects[id2]
+
+        for frame_id, roi in obj2.get_track().items():
+            roi.objectId = obj1.objectId
+            obj1.add_frame_roi(frame_id, roi)
+
+        del self.trackedObjects[id2]
+
+        # replace ids in tracked frames
+        for i, f in self.trackedFrames.items():
+            for roi in f.get_ROIs():
+                if roi.objectId == id2:
+                    roi.objectId = id1
+
+    # change Id of an object. Specially useful for multi tracking multi camera
+    def objectReId(self, oldId, newId):
+        if not oldId in self.trackedObjects:
+            return
+
+        if newId in self.trackedObjects:
+            return
+
+        obj = self.trackedObjects[oldId]
+
+        for frame_id, roi in obj.get_track().items():
+            roi.objectId = newId
+
+        for i, f in self.trackedFrames.items():
+            for roi in f.get_ROIs():
+                if roi.objectId == oldId:
+                    roi.objectId = newId
+
+    # gets all ROI for each frame of every tracked object
+    def getImagesForROIs(self, video_file):
+        idx = 1
+        cap = cv2.VideoCapture(video_file)
+        ret = True
+        while ret:
+            ret, image = cap.read()
+            # cv2.imshow("Image", image)
+            # cv2.waitKey(1)
+            if image is not None:
+                if idx in self.trackedFrames:
+                    for roi in self.trackedFrames[idx].get_ROIs():
+                        roi.cropImage(image)
+
+                    for id, obj in self.trackedObjects.items():
+                        if idx in obj.get_track():
+                            for i, r in obj.get_track().items():
+                                r.cropImage(image)
+
+            idx += 1
+        cap.release()
+
+        # find best shot of each image (biggest area)
+        for id, obj in self.trackedObjects.items():
+            obj.findBestImage()
+
+    # merges similar tracked objects based on
+    def mergeSimilarObjects(self):
+        toMerge = []
+
+        for id1, obj1 in self.trackedObjects.items():
+            for id2, obj2 in self.trackedObjects.items():
+                if obj1.objectId != obj2.objectId:
+                    i1 = obj1.bestImage
+                    i2 = obj2.bestImage
+
+                    # print(id1, id2, d)
+                    d = self.compareImages(i1, i2)
+                    if d > .76:
+                        toMerge.append((id1, id2, d))
+
+        for id1, id2, d in toMerge:
+            if abs(id1-id2) < 10:
+                # print("Merging {} and {} dist {}".format(id1, id2, d))
+                self.mergeTrackedObjects(id1, id2)
+
+    # merges similar tracked objects from different cameras
+    def mergeObjectTrackers(self, otherTracker):
+        toMerge = []
+
+        for id1, obj1 in self.trackedObjects.items():
+            for id2, obj2 in otherTracker.trackedObjects.items():
+                if obj1.objectId != obj2.objectId:
+                    i1 = obj1.bestImage
+                    i2 = obj2.bestImage
+
+                    # print(id1, id2, d)
+                    d = self.compareImages(i1, i2)
+                    if d > .76:
+                        toMerge.append((id1, id2, d))
+
+        for id1, id2, d in toMerge:
+            if abs(id1 - id2) < 10:
+                # print("Merging {} and {} dist {}".format(id1, id2, d))
+                self.objectReId(id1, id2)
+
+    def compareImages(self, i1, i2):
+        hist1 = cv2.calcHist([i1], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+        hist1 = cv2.normalize(hist1, hist1).flatten()
+        hist2 = cv2.calcHist([i2], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+        hist2 = cv2.normalize(hist2, hist2).flatten()
+
+        d = cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL)
+        # print(id1, id2, d)
+        return d
+

@@ -1,7 +1,11 @@
-from datasets.aicity_mtmc_dataset import AICityMTMCDataset, AICityMTMCSequence, AICityMTMCCamera
-from utils.object_tracking import ObjectTracker
-from week3.task2 import load_annotations, load_detections_txt, print_mot_metrics
 import cv2
+import motmetrics as mm
+
+from datasets.aicity_mtmc_dataset import AICityMTMCDataset
+from proxy_nca import predict
+from utils.object_tracking import ObjectTracker
+from week3.task2 import load_detections_txt, print_mot_metrics
+
 
 def make_video_from_tracker(trckr, cam, video_name):
     four_cc = cv2.VideoWriter_fourcc(*'XVID')
@@ -35,24 +39,43 @@ def MultiTrackMultiCamera():
 
     trackingMethod = "RegionOverlap"
     detectionMethod = "yolo3"
+    detectionThreshold = .8
 
+    acc = mm.MOTAccumulator(auto_id=True)
     for c in seq.getCameras():
         cam = seq.getCamera(c)
         print("Camera {}".format(c))
 
         # Load detections
-        untracked_frames = load_detections_txt(cam.getDetectionFile(detectionMethod), "LTWH", .8)
+        untracked_frames = load_detections_txt(cam.getDetectionFile(detectionMethod), "LTWH", detectionThreshold)
         tracker = ObjectTracker(trackingMethod)
         for id, frame in untracked_frames.items():
-            #print("Tracking objects in frame {}".format(id))
+            print("Tracking objects in frame {}".format(id))
             tracker.process_frame(frame)
 
-        tracker.removeStaticObjects()
+        #tracker.removeStaticObjects()
+        tracker.getImagesForROIs(cam.getVideoPath())
+        tracker.mergeSimilarObjects()
+        #for id, obj in tracker.trackedObjects.items():
+            #cv2.imwrite("results/{}_{}.png".format(c, id), obj.bestImage)
+            #cv2.imshow("Image", obj.bestImage)
+            #cv2.waitKey(1)
+        trackers[c] = tracker
+        # make_video_from_tracker(tracker, cam, "{}.avi".format(c))
 
-        #make_video_from_tracker(tracker, cam, "test.avi")
+    #merge tracks from different cameras
+    for c1 in seq.getCameras():
+        print('merging tracks')
+        tracker = trackers[c1]
+        for c2 in seq.getCameras():
+            tracker.mergeObjectTrackers(trackers[c2])
+        trackers[c1] = tracker
 
+    #Compute metrics for merged tracks
+    for c in seq.getCameras():
+        tracker = trackers[c]
         # Load ground truth
-        gt_frames = load_detections_txt(cam.getGTFile(), "LTWH", .2, isGT=True)
+        gt_frames = load_detections_txt(cam.getGTFile(), "LTWH", .1, isGT=True)
         gt_tracker = ObjectTracker("")
         for id, frame in gt_frames.items():
             gt_tracker.load_annotated_frame(frame)
@@ -60,10 +83,17 @@ def MultiTrackMultiCamera():
         #make_video_from_tracker(gt_tracker, cam, "test.avi")
 
         # Compute metrics
-        acc = tracker.compute_mot_metrics(gt_tracker)
-        print_mot_metrics(acc)
+        a = tracker.compute_mot_metrics(gt_tracker)
+        print_mot_metrics(a)
 
-        trackers[c] = tracker
+        tracker.update_mot_metrics(gt_tracker, acc)
+
+    print_mot_metrics(acc)
+
 
     # TODO: play with trackers dict to match tracked objects
 
+if __name__ == '__main__':
+    # TODO: substitute 'emulate_input_data' by actual code
+    frame0_samples, frame1_samples = predict.emulate_input_data()
+    predict.match(frame0_samples, frame1_samples)
