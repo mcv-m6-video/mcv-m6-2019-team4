@@ -20,7 +20,7 @@ def load_detections_txt(detections_file, gtFormat, confidence_th=.2, isGT=False)
             if isGT:
                 frame_dict[i].add_ROI(ROI(r[2], r[3], r[4], r[5], r[1]))
             else:
-                frame_dict[i].add_ROI( ROI(r[2], r[3], r[4], r[5]) )
+                frame_dict[i].add_ROI(ROI(r[2], r[3], r[4], r[5]))
 
     return frame_dict
 
