@@ -33,7 +33,8 @@ def make_video_from_tracker(trckr, cam, video_name, plot=False, track_method='Re
 
 
 def MultiTrackSingleCamera(tested_seqs=[3], track_meth='RegionOverlap', detect_meth='ssd512', make_video_track=True,
-                           make_video_gt=True, make_video_unfiltered=True, min_conf=.2, parked_threshold=5.0, hasGT=True):
+                           make_video_gt=True, make_video_unfiltered=True, make_video_mtsc=False, min_conf=.2,
+                           parked_threshold=5.0, hasGT=True, mtsc_meth=None):
 
     ds = AICityMTMCDataset()
     if hasGT:
@@ -55,71 +56,84 @@ def MultiTrackSingleCamera(tested_seqs=[3], track_meth='RegionOverlap', detect_m
             cam = seq.getCamera(c)
             print("Camera {}".format(c))
 
-            # Load detections
-            untracked_frames = load_detections_txt(cam.getDetectionFile(detect_meth), "LTWH", confidence_th=min_conf)
-            tracker = ObjectTracker(track_meth)
-            for id, frame in untracked_frames.items():
-                # print("Tracking objects in frame {}".format(id))
-                tracker.process_frame(frame)
+            if mtsc_meth is None:
+                # Load detections
+                untracked_frames = load_detections_txt(cam.getDetectionFile(detect_meth), "LTWH", confidence_th=min_conf)
+                tracker = ObjectTracker(track_meth)
+                for id, frame in untracked_frames.items():
+                    # print("Tracking objects in frame {}".format(id))
+                    tracker.process_frame(frame)
 
-            # Changes to remove static objects based on a relative threshold (% of width/height not number of pixels)
-            cam.openVideo()
-            if cam.videoIsOpened():
-                ret, frame = cam.getNextFrame()
-                height, width, _ = frame.shape
+                # Changes to remove static objects based on a relative threshold (% of width/height not number of pixels)
+                cam.openVideo()
+                if cam.videoIsOpened():
+                    ret, frame = cam.getNextFrame()
+                    height, width, _ = frame.shape
 
-            if make_video_unfiltered:
-                video_name = 'Tracking_{0}_S{1:02d}_{2}_det-{3}_unfiltered.avi'.format(track_meth, sq_id, c,
-                                                                                       detect_meth)
-                if not os.path.isfile(video_name):
-                    print("Creating video from tracker...")
-                    make_video_from_tracker(tracker, cam, video_name, plot=False, track_method=track_meth, width=width,
-                                            height=height)
-                else:
-                    print("A video with the same name already exists, continuing without overwritting it...")
-
-            tracker.removeStaticObjects(dist_threshold_px=parked_threshold, width=width, height=height)
-
-            if make_video_track:
-                video_name = 'Tracking_{0}_S{1:02d}_{2}_det-{3}.avi'.format(track_meth, sq_id, c, detect_meth)
-                if not os.path.isfile(video_name):
-                    print("Creating video from tracker...")
-                    make_video_from_tracker(tracker, cam, video_name, plot=False, track_method=track_meth, width=width,
-                                            height=height)
-                else:
-                    print("A video with the same name already exists, continuing without overwritting it...")
-
-            if hasGT:
-                # Load ground truth
-                gt_frames = load_detections_txt(cam.getGTFile(), "LTWH", .2, isGT=True)
-                gt_tracker = ObjectTracker("")
-                for id, frame in gt_frames.items():
-                    gt_tracker.load_annotated_frame(frame)
-
-            # Load Track Clustering tracks
-            # tc_frames = load_detections_txt(
-            #     '/home/fperez/Documents/Master-in-Computer-vision/Module 6/Project/utils/TC_tracker/Results_aicity/res/frames_jpg.txt',
-            #                                 "LTWHtc", isGT=True)
-            # tc_tracker = ObjectTracker("")
-            # for id, frame in tc_frames.items():
-            #     tc_tracker.load_annotated_frame(frame)
-            #
-            # tc_tracker.removeStaticObjects(dist_threshold_px=parked_threshold, width=width, height=height)
-
-                if make_video_gt:
-                    video_name = 'Annotations_S{0:02d}_{1}.avi'.format(sq_id, c)
+                if make_video_unfiltered:
+                    video_name = 'Tracking_{0}_S{1:02d}_{2}_det-{3}_unfiltered.avi'.format(track_meth, sq_id, c,
+                                                                                           detect_meth)
                     if not os.path.isfile(video_name):
-                        print("Creating video from gt annotations...")
-                        make_video_from_tracker(gt_tracker, cam, video_name, width=width, height=height)
+                        print("Creating video from tracker...")
+                        make_video_from_tracker(tracker, cam, video_name, plot=False, track_method=track_meth, width=width,
+                                                height=height)
+                    else:
+                        print("A video with the same name already exists, continuing without overwritting it...")
+
+                tracker.removeStaticObjects(dist_threshold_px=parked_threshold, width=width, height=height)
+
+                if make_video_track:
+                    video_name = 'Tracking_{0}_S{1:02d}_{2}_det-{3}.avi'.format(track_meth, sq_id, c, detect_meth)
+                    if not os.path.isfile(video_name):
+                        print("Creating video from tracker...")
+                        make_video_from_tracker(tracker, cam, video_name, plot=False, track_method=track_meth, width=width,
+                                                height=height)
+                    else:
+                        print("A video with the same name already exists, continuing without overwritting it...")
+
+                if hasGT:
+                    # Load ground truth
+                    gt_frames = load_detections_txt(cam.getGTFile(), "LTWH", .2, isGT=True)
+                    gt_tracker = ObjectTracker("")
+                    for id, frame in gt_frames.items():
+                        gt_tracker.load_annotated_frame(frame)
+
+                    if make_video_gt:
+                        video_name = 'Annotations_S{0:02d}_{1}.avi'.format(sq_id, c)
+                        if not os.path.isfile(video_name):
+                            print("Creating video from gt annotations...")
+                            make_video_from_tracker(gt_tracker, cam, video_name, width=width, height=height)
+                        else:
+                            print("A video with the same name already exists, continuing w/o overwritting it...")
+
+                    # Compute metrics
+                    acc = tracker.compute_mot_metrics(gt_tracker)
+                    idf1 = print_mot_metrics(acc)
+                    idf1_cam[c] = idf1
+
+            else:  # mtsc is not None, use it
+                # Load Track Clustering tracks
+                mtsc_frames = load_detections_txt(cam.getMTSCtracks(mtsc_meth), gtFormat='LTWH', isGT=True)
+                mtsc_tracker = ObjectTracker("")
+                for id, frame in mtsc_frames.items():
+                    mtsc_tracker.load_annotated_frame(frame)
+
+                mtsc_tracker.removeStaticObjects(dist_threshold_px=parked_threshold, width=width, height=height)
+
+                if make_video_mtsc:
+                    video_name = 'MTSC_S{0:02d}_{1}-{2}.avi'.format(sq_id, c, mtsc_meth)
+                    if not os.path.isfile(video_name):
+                        print("Creating video from MTSC estimated tracks...")
+                        make_video_from_tracker(mtsc_tracker, cam, video_name, width=width, height=height)
                     else:
                         print("A video with the same name already exists, continuing w/o overwritting it...")
 
-                # Compute metrics
-                acc = tracker.compute_mot_metrics(gt_tracker)
-                idf1 = print_mot_metrics(acc)
-                idf1_cam[c] = idf1
-            # acc_tc = tc_tracker.compute_mot_metrics(gt_tracker, tc_tracker=True)
-            # idf1_tc = print_mot_metrics(acc_tc)
+                if hasGT:
+                    acc_mtsc = mtsc_tracker.compute_mot_metrics(gt_tracker, mtsc_tracker=True)
+                    idf1_mtsc = print_mot_metrics(acc_mtsc)
+                    idf1_cam[c] = idf1_mtsc
+
+        # Compute mean
         if hasGT:
             sum = 0
             for cam_id, idf1 in idf1_cam.items():
@@ -203,6 +217,11 @@ if __name__ == '__main__':
 
     print("Printing idf1 test metrics for run tests")
     print(idf1_metrics)
+
+    # Read mtsc result, filter it and evaluate it
+    # mtsc_method = 'tc_ssd512'
+    # idf1_metrics = MultiTrackSingleCamera(mtsc_meth=mtsc_method, hasGT=True, make_video_mtsc=True,
+    #                                       parked_threshold=park_thresh, min_conf=min_confidence)
 
     # Plotting validation figure
     # if plot:

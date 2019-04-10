@@ -480,8 +480,8 @@ class ObjectTracker:
                                 color, 2)
                        lastr_corrected = r
 
-            #roi_center = (int(roi.xTopLeft + (abs(roi.xTopLeft - roi.xBottomRight) / 2.0)),
-            #              int(roi.yTopLeft + (abs(roi.yTopLeft - roi.yBottomRight) / 2.0)) )
+            # roi_center = (int(roi.xTopLeft + (abs(roi.xTopLeft - roi.xBottomRight) / 2.0)),
+            #               int(roi.yTopLeft + (abs(roi.yTopLeft - roi.yBottomRight) / 2.0)) )
             text_pos = (int(roi.xTopLeft+10), int(roi.yTopLeft+20))
 
             cv2.putText(image, str(roi.objectId), text_pos, cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, .5, (0,0,0), 2)
@@ -491,17 +491,16 @@ class ObjectTracker:
 
         return image
 
-
-    def compute_mot_metrics(self, other, tc_tracker=True):
+    def compute_mot_metrics(self, other, mtsc_tracker=True):
         acc = mm.MOTAccumulator(auto_id=False) # we will provide frame ids
 
         for id, frame in self.trackedFrames.items():
-            if self.method == "RegionOverlap" or tc_tracker:
+            if self.method == "RegionOverlap" or mtsc_tracker:
 
                 detObjects = [r.objectId for r in frame.get_ROIs()]
                 detROIs = [[r.xTopLeft, r.yTopLeft, r.xBottomRight, r.yBottomRight] for r in frame.get_ROIs()]
 
-            else: # Kalman
+            else:  # Kalman
                 detObjects = [r.objectId for r in frame.get_ROIs()]
                 aux = [self.trackedObjects[id] for id in detObjects]
                 detROIs = [[r.track_corrected[id].xTopLeft,
@@ -518,12 +517,11 @@ class ObjectTracker:
                 gtObjects = []
                 gtROIs = []
 
-
             dists = mm.distances.iou_matrix(gtROIs, detROIs, max_iou=0.5)
             acc.update(gtObjects, detObjects, dists, id)
 
-            #print("Compute metrics for frame {}".format(id))
-            #print(acc.mot_events.loc[id])
+            # print("Compute metrics for frame {}".format(id))
+            # print(acc.mot_events.loc[id])
 
         return acc
 

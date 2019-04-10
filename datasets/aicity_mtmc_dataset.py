@@ -55,6 +55,11 @@ class AICityMTMCCamera:
     def getGTFile(self):
         return os.path.join(self.root, 'gt', 'gt.txt')
 
+    def getMTSCtracks(self, mtsc_method):
+        mtsc_file = "mtsc_{}.txt".format(mtsc_method)
+        return os.path.join(self.root, 'mtsc', mtsc_file)
+
+
 class AICityMTMCDataset:
 
     def __init__(self, root_dir = AICITY_MC_ROOT):
