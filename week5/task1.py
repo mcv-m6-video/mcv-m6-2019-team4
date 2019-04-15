@@ -34,7 +34,7 @@ def make_video_from_tracker(trckr, cam, video_name, plot=False, track_method='Re
 
 def MultiTrackSingleCamera(tested_seqs=[3], track_meth='RegionOverlap', detect_meth='ssd512', make_video_track=True,
                            make_video_gt=True, make_video_unfiltered=True, make_video_mtsc=False, min_conf=.2,
-                           parked_threshold=5.0, hasGT=True, mtsc_meth=None):
+                           parked_threshold=5.0, hasGT=True, mtsc_meth=None, distance_metric='hist'):
 
     ds = AICityMTMCDataset()
     if hasGT:
@@ -59,7 +59,7 @@ def MultiTrackSingleCamera(tested_seqs=[3], track_meth='RegionOverlap', detect_m
             if mtsc_meth is None:
                 # Load detections
                 untracked_frames = load_detections_txt(cam.getDetectionFile(detect_meth), "LTWH", confidence_th=min_conf)
-                tracker = ObjectTracker(track_meth)
+                tracker = ObjectTracker(track_meth, distance=distance_metric)
                 for id, frame in untracked_frames.items():
                     # print("Tracking objects in frame {}".format(id))
                     tracker.process_frame(frame)
@@ -94,7 +94,7 @@ def MultiTrackSingleCamera(tested_seqs=[3], track_meth='RegionOverlap', detect_m
                 if hasGT:
                     # Load ground truth
                     gt_frames = load_detections_txt(cam.getGTFile(), "LTWH", .2, isGT=True)
-                    gt_tracker = ObjectTracker("")
+                    gt_tracker = ObjectTracker("", distance=distance_metric)
                     for id, frame in gt_frames.items():
                         gt_tracker.load_annotated_frame(frame)
 
@@ -114,7 +114,7 @@ def MultiTrackSingleCamera(tested_seqs=[3], track_meth='RegionOverlap', detect_m
             else:  # mtsc is not None, use it
                 # Load Track Clustering tracks
                 mtsc_frames = load_detections_txt(cam.getMTSCtracks(mtsc_meth), gtFormat='LTWH', isGT=True)
-                mtsc_tracker = ObjectTracker("")
+                mtsc_tracker = ObjectTracker("", distance=distance_metric)
                 for id, frame in mtsc_frames.items():
                     mtsc_tracker.load_annotated_frame(frame)
 
@@ -151,8 +151,9 @@ if __name__ == '__main__':
     test_seqs = [4]
     #  track_methods = ['RegionOverlap', 'Kalman']
     track_methods = 'RegionOverlap'  # 'RegionOverlap'
-    # detect_methods = ['ssd512', 'yolo3', 'mask_rcnn']    
+    # detect_methods = ['ssd512', 'yolo3', 'mask_rcnn']
     detect_method = 'ssd512'  # 'retinanet'
+    distance_metric = 'hist'
     make_vid_track = True
     make_vid_gt = False
     make_vid_unfiltered = False
@@ -185,7 +186,8 @@ if __name__ == '__main__':
             aux_idf1 = MultiTrackSingleCamera(tested_seqs=valid_seqs, track_meth=track_methods, detect_meth=detect_method,
                                               make_video_track=make_vid_track, make_video_gt=make_vid_gt,
                                               make_video_unfiltered=make_vid_unfiltered,
-                                              min_conf=min_confidence, parked_threshold=parked_thresh)
+                                              min_conf=min_confidence, parked_threshold=parked_thresh,
+                                              distance_metric=distance_metric)
             idf1_metrics[idh] = aux_idf1
             # idf1_metrics[idh, idw] = aux_idf1
             idh += 1
@@ -202,7 +204,8 @@ if __name__ == '__main__':
             idf1_test_metrics = MultiTrackSingleCamera(tested_seqs=test_seqs, track_meth=track_methods,
                                                        detect_meth=detect_method, make_video_track=True,
                                                        make_video_gt=make_vid_gt, make_video_unfiltered=True,
-                                                       min_conf=min_confidence, parked_threshold=best_park_thresh)
+                                                       min_conf=min_confidence, parked_threshold=best_park_thresh,
+                                                       distance_metric=distance_metric)
 
             print("Printing idf1 test metrics for run tests")
             print(idf1_test_metrics)
@@ -211,7 +214,8 @@ if __name__ == '__main__':
         idf1_metrics = MultiTrackSingleCamera(tested_seqs=test_seqs, track_meth=track_methods,
                                               detect_meth=detect_method, make_video_track=make_vid_track,
                                               make_video_gt=make_vid_gt, make_video_unfiltered=make_vid_unfiltered,
-                                              min_conf=min_confidence, parked_threshold=parked_thresh)
+                                              min_conf=min_confidence, parked_threshold=parked_thresh,
+                                              distance_metric=distance_metric)
     else:  # default values
         idf1_metrics = MultiTrackSingleCamera()
 
