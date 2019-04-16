@@ -15,8 +15,7 @@ the video sequence
 
 # Applicability
 
-Any problem where video sequence analysis can be applied to obtain 
-accurate automatic results 
+Any problem where video sequence analysis is applied to automatically track objects.
 
 # How to run
 
