@@ -160,8 +160,10 @@ if __name__ == '__main__':
     plot = False
     valid = False
     test = True
-    park_thresh = 12.5
-    min_confidence = .2  # selected after testing coarse grid: 0.2, 0.4, 0.5, 0.7, 0.8
+    park_thresh = 17.5  # optimal for S03 (coarse grid 'parked_threshs' validated on S01)
+    # park_thresh = 12.5  # optimal for S01 (" " " " on S03)
+    # park_thresh = 17.5  # used S3's optimal for S04 without validating (lack of time)
+    min_confidence = .5  # selected after testing coarse grid: 0.2, 0.4, 0.5, 0.7, 0.8
     # confidences = [ 0.5, 0.7, 0.8]
     # All tested parked threshs (recorded, at least)
     # Note: non-equally spaced because for some threshs the metrics fail due to all nan's
